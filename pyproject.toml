@@ -1,0 +1,12 @@
+[project]
+name = "flitz"
+authors = [{ name = "Martin Thoma", email = "info@martin-thoma.de" }]
+maintainers = [{ name = "Martin Thoma", email = "info@martin-thoma.de" }]
+requires-python = ">=3.10"
+dynamic = ["version"]
+readme = "README.md"
+description = "Fast Location / Indexing / Traversal Zone."
+
+[build-system]
+requires = ["flit_core >=3.0,<4"]
+build-backend = "flit_core.buildapi"

@@ -1,0 +1,2 @@
+upload:
+	flit publish
