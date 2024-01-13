@@ -1,6 +1,7 @@
 import os
 import tkinter as tk
 from tkinter import ttk, filedialog
+from datetime import datetime
 
 class FileExplorer(tk.Tk):
     def __init__(self):
@@ -9,7 +10,6 @@ class FileExplorer(tk.Tk):
         self.title("File Explorer")
         self.geometry("600x400")
 
-        # Set a specific theme for a more native look
         self.style = ttk.Style()
         self.style.theme_use("clam")
 
@@ -18,74 +18,72 @@ class FileExplorer(tk.Tk):
         img = tk.PhotoImage(icon_path)
         self.wm_iconphoto(True, img)
 
-        self.create_widgets()
-
-    def create_widgets(self):
         self.current_path = tk.StringVar()
         self.current_path.set(os.getcwd())
 
-        # Add some padding for better aesthetics
-        self.path_label = ttk.Label(self, textvariable=self.current_path, wraplength=500, padding=(5, 5))
-        self.path_label.pack(pady=10)
+        self.create_widgets()
 
-        # Use the themed Treeview widget for a more modern appearance
-        self.tree = ttk.Treeview(self, selectmode=tk.BROWSE, columns=("Name", "Type"), show="tree")
-        self.tree.heading("#0", text="Directory Tree", anchor=tk.W)
-        self.tree.column("#0", width=200, minwidth=200, stretch=tk.YES)
-        self.tree["displaycolumns"] = ("Name", "Type")
+    def create_widgets(self):
+        # URL bar with an "up" button
+        self.url_frame = ttk.Frame(self)
+        self.url_frame.pack(fill="x", pady=5)
+
+        self.up_button = ttk.Button(self.url_frame, text="Up", command=self.go_up)
+        self.up_button.pack(side=tk.LEFT, padx=5)
+
+        self.url_entry = ttk.Entry(self.url_frame, textvariable=self.current_path)
+        self.url_entry.pack(side=tk.LEFT, fill="x", expand=True)
+
+        # Treeview for the list view
+        self.tree = ttk.Treeview(self, columns=("Name", "Size", "Type", "Date Modified"), show="headings")
+
+        self.tree.heading("Name", text="Name")
+        self.tree.heading("Size", text="Size")
+        self.tree.heading("Type", text="Type")
+        self.tree.heading("Date Modified", text="Date Modified")
 
         self.tree.column("Name", anchor=tk.W, width=200)
-        self.tree.heading("Name", text="Name", anchor=tk.W)
-
+        self.tree.column("Size", anchor=tk.W, width=100)
         self.tree.column("Type", anchor=tk.W, width=100)
-        self.tree.heading("Type", text="Type", anchor=tk.W)
+        self.tree.column("Date Modified", anchor=tk.W, width=150)
 
-        self.tree.pack(expand=tk.YES, fill=tk.BOTH, padx=5)
+        self.tree.pack(side=tk.LEFT, fill="both", expand=True)
+
+        self.tree.bind("<Double-1>", self.on_item_double_click)
 
         self.load_files()
 
-        self.open_button = ttk.Button(self, text="Open", command=self.open_file)
-        self.open_button.pack(side=tk.LEFT, padx=5, pady=5)
-
-        self.choose_button = ttk.Button(self, text="Choose Directory", command=self.choose_directory)
-        self.choose_button.pack(side=tk.LEFT, padx=5, pady=5)
-
-        self.refresh_button = ttk.Button(self, text="Refresh", command=self.load_files)
-        self.refresh_button.pack(side=tk.LEFT, padx=5, pady=5)
-
-        self.exit_button = ttk.Button(self, text="Exit", command=self.destroy)
-        self.exit_button.pack(side=tk.RIGHT, padx=5, pady=5)
-
     def load_files(self):
         path = self.current_path.get()
+        self.url_entry.delete(0, tk.END)
+        self.url_entry.insert(0, path)
         self.tree.delete(*self.tree.get_children())
 
         try:
-            for dirpath, dirnames, filenames in os.walk(path):
-                parent_id = self.tree.insert("", "end", text=dirpath, open=False)
-                for dirname in dirnames:
-                    self.tree.insert(parent_id, "end", text=dirname, open=False, values=("Folder"))
-                for filename in filenames:
-                    self.tree.insert(parent_id, "end", text=filename, open=False, values=("File"))
-        except Exception as e:
-            self.tree.insert("", "end", text=f"Error: {e}")
+            for filename in os.listdir(path):
+                filepath = os.path.join(path, filename)
+                size = os.path.getsize(filepath) if os.path.isfile(filepath) else ""
+                type_ = "File" if os.path.isfile(filepath) else "Folder"
+                date_modified = datetime.fromtimestamp(os.path.getmtime(filepath)).strftime("%Y-%m-%d %H:%M:%S")
 
-    def open_file(self):
-        selected_item = self.tree.focus()
+                self.tree.insert("", "end", values=(filename, size, type_, date_modified))
+        except Exception as e:
+            self.tree.insert("", "end", values=(f"Error: {e}", "", "", ""))
+
+    def on_item_double_click(self, event):
+        selected_item = self.tree.selection()
         if selected_item:
-            selected_file = self.tree.item(selected_item, "text")
+            selected_file = self.tree.item(selected_item, "values")[0]
             path = os.path.join(self.current_path.get(), selected_file)
 
             if os.path.isdir(path):
                 self.current_path.set(path)
                 self.load_files()
-            else:
-                # Implement your logic for opening files here
-                print(f"Opening file: {path}")
 
-    def choose_directory(self):
-        chosen_directory = filedialog.askdirectory()
-        if chosen_directory:
-            self.current_path.set(chosen_directory)
+    def go_up(self):
+        current_path = self.current_path.get()
+        up_path = os.path.dirname(current_path)
+
+        if os.path.exists(up_path):
+            self.current_path.set(up_path)
             self.load_files()
-
