@@ -1,7 +1,8 @@
 import os
 import tkinter as tk
-from tkinter import ttk, filedialog
+from tkinter import ttk
 from datetime import datetime
+
 
 class FileExplorer(tk.Tk):
     def __init__(self):
@@ -35,7 +36,9 @@ class FileExplorer(tk.Tk):
         self.url_entry.pack(side=tk.LEFT, fill="x", expand=True)
 
         # Treeview for the list view
-        self.tree = ttk.Treeview(self, columns=("Name", "Size", "Type", "Date Modified"), show="headings")
+        self.tree = ttk.Treeview(
+            self, columns=("Name", "Size", "Type", "Date Modified"), show="headings"
+        )
 
         self.tree.heading("Name", text="Name")
         self.tree.heading("Size", text="Size")
@@ -64,9 +67,13 @@ class FileExplorer(tk.Tk):
                 filepath = os.path.join(path, filename)
                 size = os.path.getsize(filepath) if os.path.isfile(filepath) else ""
                 type_ = "File" if os.path.isfile(filepath) else "Folder"
-                date_modified = datetime.fromtimestamp(os.path.getmtime(filepath)).strftime("%Y-%m-%d %H:%M:%S")
+                date_modified = datetime.fromtimestamp(
+                    os.path.getmtime(filepath)
+                ).strftime("%Y-%m-%d %H:%M:%S")
 
-                self.tree.insert("", "end", values=(filename, size, type_, date_modified))
+                self.tree.insert(
+                    "", "end", values=(filename, size, type_, date_modified)
+                )
         except Exception as e:
             self.tree.insert("", "end", values=(f"Error: {e}", "", "", ""))
 
