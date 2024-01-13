@@ -1,4 +1,6 @@
-from flitz import FileExplorer
+"""Execute flitz as a module."""
 
-app = FileExplorer()
-app.mainloop()
+from flitz.cli import entry_point
+
+if __name__ == "__main__":
+    entry_point()
