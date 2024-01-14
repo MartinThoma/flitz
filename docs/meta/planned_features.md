@@ -1,0 +1,3 @@
+# Planned Features
+
+* Search function

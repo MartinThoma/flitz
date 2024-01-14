@@ -1,5 +1,5 @@
-from flitz.file_explorer import FileExplorer
+from ._version import __version__
 
-if __name__ == "__main__":
-    file_explorer = FileExplorer()
-    file_explorer.mainloop()
+__all__ = [
+    "__version__",
+]
