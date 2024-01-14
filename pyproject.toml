@@ -6,7 +6,6 @@ requires-python = ">=3.10"
 dynamic = ["version"]
 readme = "README.md"
 description = "Fast Location / Indexing / Traversal Zone."
-requires-python = ">=3.6"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
