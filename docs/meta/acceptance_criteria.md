@@ -9,7 +9,7 @@ General project setup:
    the package is "flitz".
 3. Test the application using pytest. Avoid using TestCase. Use a pytest fixture
    instead.
-4. Add sphinx documentation
+4. Add sphinx documentation and ensure it's build on readthedocs
 5. Prefer pathlib over os.
 
 Features:
