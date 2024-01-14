@@ -20,3 +20,5 @@ Features:
    on the left of it. It should only have an image, no text.
 5. Allow changing the font size with Ctrl +/- in the whole application.
 6. Allow sorting by clicking on the Column headers (name, size, type, date modified)
+7. If a parameter is given like `flitz /home/foo/bar`, then `/home/foo/bar`
+   should be the path being set when starting flitz.

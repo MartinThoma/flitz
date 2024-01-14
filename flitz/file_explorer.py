@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 class FileExplorer(tk.Tk):
-    def __init__(self):
+    def __init__(self, initial_path: str):
         super().__init__()
 
         self.title("File Explorer")
@@ -23,7 +23,7 @@ class FileExplorer(tk.Tk):
         self.wm_iconphoto(True, img)
 
         self.current_path = tk.StringVar()
-        self.current_path.set(os.getcwd())
+        self.current_path.set(initial_path)
 
         self.font_size = 10  # Initial font size
 
