@@ -1,9 +1,10 @@
 """Execute flitz as a module."""
 
-from flitz.cli import entry_point
 import sys
-import os
+from pathlib import Path
+
+from flitz.cli import entry_point
 
 if __name__ == "__main__":
-    initial_path = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
-    entry_point(initial_path)
+    initial_path = sys.argv[1] if len(sys.argv) > 1 else str(Path().cwd())
+    entry_point([initial_path])

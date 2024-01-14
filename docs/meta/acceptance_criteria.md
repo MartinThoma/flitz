@@ -22,3 +22,7 @@ Features:
 6. Allow sorting by clicking on the Column headers (name, size, type, date modified)
 7. If a parameter is given like `flitz /home/foo/bar`, then `/home/foo/bar`
    should be the path being set when starting flitz.
+8. Create a Config class using Pydantic as well as a static method "load" that
+   returns a Config object. Load the configuration from "~/.flitz.yml", if it
+   exists. The class should have a single value "font_size: int" with a default
+   of 14.

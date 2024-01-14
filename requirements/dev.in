@@ -2,3 +2,4 @@ pip-tools
 pre-commit
 flit
 wheel
+types-PyYaml
