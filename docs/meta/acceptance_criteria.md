@@ -26,3 +26,4 @@ Features:
    returns a Config object. Load the configuration from "~/.flitz.yml", if it
    exists. The class should have a single value "font_size: int" with a default
    of 14.
+9. Pressing F2 when a file/folder is selected lets the user rename that object.

@@ -3,7 +3,7 @@
 import tkinter as tk
 from datetime import datetime
 from pathlib import Path
-from tkinter import ttk
+from tkinter import messagebox, simpledialog, ttk
 
 from PIL import Image, ImageTk
 
@@ -46,6 +46,47 @@ class FileExplorer(tk.Tk):
         # Bind Ctrl +/- for changing font size
         self.bind("<Control-plus>", self.increase_font_size)
         self.bind("<Control-minus>", self.decrease_font_size)
+        self.bind("<F2>", self.rename_item)
+
+    def rename_item(self, _: tk.Event) -> None:
+        """Trigger a rename action."""
+        selected_item = self.tree.selection()
+        if selected_item:
+            values = self.tree.item(selected_item, "values")  # type: ignore[call-overload]
+            if values:
+                selected_file = values[0]
+                # Implement the renaming logic using the selected_file
+                # You may use an Entry widget or a dialog to get the new name
+                new_name = self.ask_for_new_name(selected_file)
+                if new_name:
+                    # Update the treeview and perform the renaming
+                    self.tree.item(
+                        selected_item,  # type: ignore[call-overload]
+                        values=(new_name, values[1], values[2], values[3]),
+                    )
+                    # Perform the actual renaming operation in the file system if needed
+                    old_path = Path(self.current_path.get()) / selected_file
+                    new_path = Path(self.current_path.get()) / new_name
+
+                    try:
+                        old_path.rename(new_path)
+                        self.tree.item(
+                            selected_item,  # type: ignore[call-overload]
+                            values=(new_name, values[1], values[2], values[3]),
+                        )
+                    except OSError as e:
+                        # Handle errors, for example, show an error message
+                        messagebox.showerror(
+                            "Error",
+                            f"Error renaming {selected_file}: {e}",
+                        )
+
+    def ask_for_new_name(self, old_name: str) -> str | None:
+        """Ask the user for the new filename."""
+        # You can implement a dialog or use an Entry widget to get the new name
+        # For simplicity, let's use a simple dialog here
+        new_name = simpledialog.askstring("Rename", f"Enter new name for {old_name}:")
+        return new_name
 
     def increase_font_size(self, _: tk.Event) -> None:
         """Increase the font size by one, up to MAX_FONT_SIZE."""
