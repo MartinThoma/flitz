@@ -108,7 +108,15 @@ class FileExplorer(tk.Tk):
         data = [
             (self.tree.set(item, column), item) for item in self.tree.get_children("")
         ]
-        data.sort(reverse=reverse)
+
+        # Handle numeric sorting for the "Size" column
+        if column == "Size":
+            data.sort(
+                key=lambda x: int(x[0]) if x[0].isdigit() else float("inf"),
+                reverse=reverse,
+            )
+        else:
+            data.sort(reverse=reverse)
 
         for index, (value, item) in enumerate(data):
             self.tree.move(item, "", index)
