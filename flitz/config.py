@@ -10,6 +10,13 @@ import yaml
 from pydantic import BaseModel
 
 
+class ConfigSelection(BaseModel):
+    """Configuration related to the selected item."""
+
+    background_color: str = "#00ff00"
+    text_color: str = "red"
+
+
 class Config(BaseModel):
     """
     The configuration base class.
@@ -22,6 +29,9 @@ class Config(BaseModel):
     font_size: int = 14
     width: int = 1200
     height: int = 800
+    text_color: str = "#000000"
+    background_color: str = "#ffffff"
+    selection: ConfigSelection = ConfigSelection()
 
     @staticmethod
     def load() -> "Config":

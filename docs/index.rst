@@ -13,6 +13,7 @@ flitz is a file manager
    :maxdepth: 1
 
    user/installation
+   user/customization
 
 .. toctree::
    :caption: Meta

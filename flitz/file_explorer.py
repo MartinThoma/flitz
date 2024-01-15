@@ -33,6 +33,14 @@ class FileExplorer(tk.Tk):
             "Treeview.Heading",
             font=(self.cfg.font, self.cfg.font_size),
         )
+        self.style.map(
+            "Treeview",
+            foreground=[
+                (None, self.cfg.text_color),
+                ("selected", self.cfg.selection.text_color),
+            ],
+            background=[("selected", self.cfg.selection.background_color)],
+        )
 
         # Set window icon (you need to provide a suitable icon file)
         icon_path = str(Path(__file__).resolve().parent / "icon.ico")
@@ -112,6 +120,7 @@ class FileExplorer(tk.Tk):
             "Treeview",
             rowheight=int(self.cfg.font_size * 2.5),
             font=[self.cfg.font, self.cfg.font_size],
+            background=self.cfg.background_color,
         )
         self.style.configure(
             "Treeview.Heading",
