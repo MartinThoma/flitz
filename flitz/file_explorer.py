@@ -27,8 +27,8 @@ class FileExplorer(tk.Tk):
         self.cfg = Config.load()
         self.geometry(f"{self.cfg.width}x{self.cfg.height}")
 
+        self.configure(background=self.cfg.background_color)
         self.style = ttk.Style()
-        self.style.theme_use("clam")
         self.style.configure(
             "Treeview.Heading",
             font=(self.cfg.font, self.cfg.font_size),
@@ -39,7 +39,10 @@ class FileExplorer(tk.Tk):
                 (None, self.cfg.text_color),
                 ("selected", self.cfg.selection.text_color),
             ],
-            background=[("selected", self.cfg.selection.background_color)],
+            background=[
+                (None, self.cfg.background_color),
+                ("selected", self.cfg.selection.background_color),
+            ],
         )
 
         # Set window icon (you need to provide a suitable icon file)
@@ -128,11 +131,12 @@ class FileExplorer(tk.Tk):
             font=(self.cfg.font, self.cfg.font_size),
         )
 
-    def create_widgets(self) -> None:
-        """Create all elements in the window."""
-        # URL bar with an "up" button
-        self.url_frame = ttk.Frame(self)
-        self.url_frame.pack(fill="x", pady=5)
+    def create_urlframe(self) -> None:
+        """URL bar with an "up" button."""
+        self.url_frame = tk.Frame(self, background="blue")  # self.cfg.background_color
+        self.url_frame.grid(row=0, column=0, rowspan=1, columnspan=3, sticky="nesw")
+        self.url_frame.rowconfigure(0, weight=1, minsize=self.cfg.font_size + 5)
+        self.url_frame.columnconfigure(1, weight=1)
 
         up_path = Path(__file__).resolve().parent / "up.png"
         pixels_x = 32
@@ -147,15 +151,20 @@ class FileExplorer(tk.Tk):
 
         # Keep a reference to prevent image from being garbage collected
         self.up_button.image = up_icon  # type: ignore[attr-defined]
-
-        self.up_button.pack(side=tk.LEFT, padx=5)
+        self.up_button.grid(row=0, column=0, padx=5)
 
         self.url_entry = ttk.Entry(self.url_frame, textvariable=self.current_path)
-        self.url_entry.pack(side=tk.LEFT, fill="x", expand=True)
+        self.url_entry.grid(row=0, column=1, columnspan=3, sticky="nsew")
 
+    def create_details_frame(self) -> None:
+        """Frame showing the files/folders."""
+        self.details_frame = tk.Frame(self, background=self.cfg.background_color)
+        self.details_frame.grid(row=1, column=0, rowspan=1, columnspan=3, sticky="nsew")
+        self.details_frame.columnconfigure(0, weight=1)
+        self.details_frame.rowconfigure(0, weight=1)
         # Treeview for the list view
         self.tree = ttk.Treeview(
-            self,
+            self.details_frame,
             columns=("Name", "Size", "Type", "Date Modified"),
             show="headings",
         )
@@ -185,13 +194,33 @@ class FileExplorer(tk.Tk):
         self.tree.column("Size", anchor=tk.W, width=100)
         self.tree.column("Type", anchor=tk.W, width=100)
         self.tree.column("Date Modified", anchor=tk.W, width=150)
-
-        self.tree.pack(fill="both", expand=True)
+        self.tree.grid(row=0, column=0, columnspan=2, sticky="nsew")
 
         self.tree.bind("<Double-1>", self.on_item_double_click)
 
         self.load_files()
+
+        # Scrollbar
+        self.scrollbar = ttk.Scrollbar(
+            self.details_frame,
+            orient="vertical",
+            command=self.tree.yview,
+        )
+        self.tree.configure(yscrollcommand=self.scrollbar.set)
+        self.scrollbar.grid(row=0, column=2, sticky="ns")
+
         self.update_font_size()
+
+    def create_widgets(self) -> None:
+        """Create all elements in the window."""
+        self.rowconfigure(0, weight=0, minsize=45)
+        self.rowconfigure(1, weight=1)
+        self.columnconfigure(0, weight=5, uniform="group1")
+        self.columnconfigure(1, weight=90, uniform="group1")
+        self.columnconfigure(2, weight=5, uniform="group1")
+
+        self.create_urlframe()
+        self.create_details_frame()
 
     def sort_column(self, column: str, reverse: bool) -> None:
         """Sort by a column of the tree view."""
