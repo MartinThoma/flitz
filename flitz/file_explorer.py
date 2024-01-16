@@ -1,5 +1,8 @@
 """The FileExplorer class."""
 
+import logging
+import platform
+import subprocess
 import tkinter as tk
 from datetime import datetime
 from pathlib import Path
@@ -9,8 +12,28 @@ from PIL import Image, ImageTk
 
 from .config import Config
 
+logger = logging.getLogger(__name__)
+
 MIN_FONT_SIZE = 4
 MAX_FONT_SIZE = 40
+
+
+def open_file(file_path: str) -> None:
+    """Open a file."""
+    system = platform.system().lower()
+
+    if system == "darwin":  # MacOS
+        subprocess.run(["open", file_path], check=False)  # noqa: S603, S607
+    elif system == "linux":  # Linux
+        subprocess.run(["xdg-open", file_path], check=False)  # noqa: S603, S607
+    elif system == "windows":  # Windows
+        subprocess.run(
+            ["start", file_path],  # noqa: S607
+            shell=True,  # noqa: S602
+            check=False,
+        )
+    else:
+        logger.info("Unsupported operating system")
 
 
 class FileExplorer(tk.Tk):
@@ -29,6 +52,7 @@ class FileExplorer(tk.Tk):
 
         self.configure(background=self.cfg.background_color)
         self.style = ttk.Style()
+        self.style.theme_use("clam")  # necessary to get the selection highlight
         self.style.configure(
             "Treeview.Heading",
             font=(self.cfg.font, self.cfg.font_size),
@@ -197,6 +221,7 @@ class FileExplorer(tk.Tk):
         self.tree.grid(row=0, column=0, columnspan=2, sticky="nsew")
 
         self.tree.bind("<Double-1>", self.on_item_double_click)
+        self.tree.bind("<Return>", self.on_item_double_click)
 
         self.load_files()
 
@@ -278,6 +303,8 @@ class FileExplorer(tk.Tk):
             if Path(path).is_dir():
                 self.current_path.set(path)
                 self.load_files()
+            else:
+                open_file(path)
 
     def go_up(self) -> None:
         """Ascend from the current directory."""

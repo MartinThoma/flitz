@@ -6,3 +6,4 @@
 * "Enter" to open (file) or descend (folder)
 * Search function
 * drag-and-drop files / folders to move them.
+* Tabs (see Notebook widget)
