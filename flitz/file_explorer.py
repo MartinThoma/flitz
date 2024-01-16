@@ -1,39 +1,21 @@
 """The FileExplorer class."""
 
 import logging
-import platform
-import subprocess
 import tkinter as tk
 from datetime import datetime
 from pathlib import Path
-from tkinter import messagebox, simpledialog, ttk
+from tkinter import messagebox, ttk
 
 from PIL import Image, ImageTk
 
 from .config import Config
+from .ui_utils import ask_for_new_name
+from .utils import open_file
 
 logger = logging.getLogger(__name__)
 
 MIN_FONT_SIZE = 4
 MAX_FONT_SIZE = 40
-
-
-def open_file(file_path: str) -> None:
-    """Open a file."""
-    system = platform.system().lower()
-
-    if system == "darwin":  # MacOS
-        subprocess.run(["open", file_path], check=False)  # noqa: S603, S607
-    elif system == "linux":  # Linux
-        subprocess.run(["xdg-open", file_path], check=False)  # noqa: S603, S607
-    elif system == "windows":  # Windows
-        subprocess.run(
-            ["start", file_path],  # noqa: S607
-            shell=True,  # noqa: S602
-            check=False,
-        )
-    else:
-        logger.info("Unsupported operating system")
 
 
 class FileExplorer(tk.Tk):
@@ -92,7 +74,7 @@ class FileExplorer(tk.Tk):
                 selected_file = values[0]
                 # Implement the renaming logic using the selected_file
                 # You may use an Entry widget or a dialog to get the new name
-                new_name = self.ask_for_new_name(selected_file)
+                new_name = ask_for_new_name(selected_file)
                 if new_name:
                     # Update the treeview and perform the renaming
                     self.tree.item(
@@ -115,13 +97,6 @@ class FileExplorer(tk.Tk):
                             "Error",
                             f"Error renaming {selected_file}: {e}",
                         )
-
-    def ask_for_new_name(self, old_name: str) -> str | None:
-        """Ask the user for the new filename."""
-        # You can implement a dialog or use an Entry widget to get the new name
-        # For simplicity, let's use a simple dialog here
-        new_name = simpledialog.askstring("Rename", f"Enter new name for {old_name}:")
-        return new_name
 
     def increase_font_size(self, _: tk.Event) -> None:
         """Increase the font size by one, up to MAX_FONT_SIZE."""
