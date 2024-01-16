@@ -49,7 +49,7 @@ class Config(BaseModel):
         if config_file.is_file():
             # Load configuration from file
             config_data = config_file.read_text()
-            config = Config.parse_obj(yaml.safe_load(config_data))
+            config = Config.model_validate(yaml.safe_load(config_data))
         else:
             # Use default configuration
             config = Config()
