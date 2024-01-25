@@ -1,9 +1,12 @@
 # Planned Features
 
+Appearence:
 * Icons next to the file / folder
+
+Usage:
+* Ensure using tab goes only to relevant parts
+
+Functionality:
 * Ctrl+c / ctrl+v / ctrl+x
-* Double click: Open
-* "Enter" to open (file) or descend (folder)
-* Search function
+    * Tabs (see Notebook widget)
 * drag-and-drop files / folders to move them.
-* Tabs (see Notebook widget)

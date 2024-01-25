@@ -73,6 +73,7 @@ class FileExplorer(tk.Tk):
         self.bind(self.cfg.keybindings.rename_item, self.rename_item)
         self.bind(self.cfg.keybindings.search, self.handle_search)
         self.bind(self.cfg.keybindings.exit_search, self.exit_search_mode)
+        self.bind(self.cfg.keybindings.go_up, self.go_up)
 
     def exit_search_mode(self, _: tk.Event) -> None:
         """Exit the search mode."""
@@ -336,7 +337,7 @@ class FileExplorer(tk.Tk):
         """Handle a double-click; especially on folders to descend."""
         selected_item = self.tree.selection()
         if selected_item:
-            selected_file = self.tree.item(selected_item, "values")[0]  # type: ignore[call-overload]
+            selected_file = self.tree.item(selected_item, "values")[0].split(" ", 1)[1]  # type: ignore[call-overload]
             path = self.current_path / selected_file
 
             if Path(path).is_dir():
@@ -346,7 +347,7 @@ class FileExplorer(tk.Tk):
             else:
                 open_file(path)
 
-    def go_up(self) -> None:
+    def go_up(self, _: tk.Event | None = None) -> None:
         """Ascend from the current directory."""
         up_path = self.current_path.parent
 

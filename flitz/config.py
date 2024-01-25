@@ -32,6 +32,7 @@ class ConfigKeybindings(BaseModel):
     rename_item: str = "<F2>"
     search: str = "<Control-f>"
     exit_search: str = "<Escape>"
+    go_up: str = "<BackSpace>"
 
 
 class Config(BaseModel):

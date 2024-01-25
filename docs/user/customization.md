@@ -19,4 +19,5 @@ keybindings:
   rename_item: "<F2>"
   search: "<Control-f>"
   exit_search: "<Escape>"
+  go_up: "<BackSpace>"
 ```

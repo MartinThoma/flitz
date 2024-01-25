@@ -27,4 +27,5 @@ Features:
    exists. The class should have a single value "font_size: int" with a default
    of 14.
 9. Pressing F2 when a file/folder is selected lets the user rename that object.
-10. Allow opening a file (double click or Enter)
+10. Allow opening a file (double click or Enter) or descend if it's a folder
+11. Open a search when pressing Ctrl+F
