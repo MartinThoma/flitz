@@ -66,12 +66,13 @@ class FileExplorer(tk.Tk):
         self.search_mode = False  # Flag to track search mode
 
         self.create_widgets()
-        # Bind Ctrl +/- for changing font size
-        self.bind("<Control-plus>", self.increase_font_size)
-        self.bind("<Control-minus>", self.decrease_font_size)
-        self.bind("<F2>", self.rename_item)
-        self.bind("<Control-f>", self.handle_search)
-        self.bind("<Escape>", self.exit_search_mode)
+
+        # Key bindings
+        self.bind(self.cfg.keybindings.font_size_increase, self.increase_font_size)
+        self.bind(self.cfg.keybindings.font_size_decrease, self.decrease_font_size)
+        self.bind(self.cfg.keybindings.rename_item, self.rename_item)
+        self.bind(self.cfg.keybindings.search, self.handle_search)
+        self.bind(self.cfg.keybindings.exit_search, self.exit_search_mode)
 
     def exit_search_mode(self, _: tk.Event) -> None:
         """Exit the search mode."""
@@ -254,6 +255,7 @@ class FileExplorer(tk.Tk):
         self.tree.column("Date Modified", anchor=tk.W, width=150)
         self.tree.grid(row=0, column=0, columnspan=2, sticky="nsew")
 
+        # Key bindings
         self.tree.bind("<Double-1>", self.on_item_double_click)
         self.tree.bind("<Return>", self.on_item_double_click)
 

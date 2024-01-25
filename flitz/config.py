@@ -24,6 +24,16 @@ class ConfigMenu(BaseModel):
     text_color: str = "#000000"
 
 
+class ConfigKeybindings(BaseModel):
+    """Allow the user to configure the key bindings."""
+
+    font_size_increase: str = "<Control-plus>"
+    font_size_decrease: str = "<Control-minus>"
+    rename_item: str = "<F2>"
+    search: str = "<Control-f>"
+    exit_search: str = "<Escape>"
+
+
 class Config(BaseModel):
     """
     The configuration base class.
@@ -40,6 +50,7 @@ class Config(BaseModel):
     background_color: str = "#ffffff"
     selection: ConfigSelection = ConfigSelection()
     menu: ConfigMenu = ConfigMenu()
+    keybindings: ConfigKeybindings = ConfigKeybindings()
 
     @staticmethod
     def load() -> "Config":
