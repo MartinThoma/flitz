@@ -289,14 +289,13 @@ class FileExplorer(tk.Tk):
             (self.tree.set(item, column), item) for item in self.tree.get_children("")
         ]
 
-        # Handle numeric sorting for the "Size" column
         if column == "Size":
-            data.sort(
-                key=lambda x: int(x[0]) if x[0].isdigit() else float("inf"),
-                reverse=reverse,
-            )
+            key = lambda x: int(x[0]) if x[0].isdigit() else float("inf")
+        elif column == "Name":
+            key = lambda x: x[0].split(" ", 1)[1]
         else:
-            data.sort(reverse=reverse)
+            key = lambda x: x
+        data.sort(key=key, reverse=reverse)
 
         for index, (_, item) in enumerate(data):
             self.tree.move(item, "", index)
@@ -323,10 +322,12 @@ class FileExplorer(tk.Tk):
                     "%Y-%m-%d %H:%M:%S",
                 )
 
+                prefix = "🗎 " if entry.is_file() else "📁 "
+
                 self.tree.insert(
                     "",
                     "end",
-                    values=(entry.name, size, type_, date_modified),
+                    values=(prefix + entry.name, size, type_, date_modified),
                 )
         except Exception as e:  # noqa: BLE001
             self.tree.insert("", "end", values=(f"Error: {e}", "", "", ""))

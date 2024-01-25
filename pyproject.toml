@@ -40,6 +40,7 @@ ignore = [
     "FBT001", # 'Boolean-typed positional argument in function definition'
     "DTZ006", # 'The use of `datetime.datetime.fromtimestamp()` without `tz` argument is not allowed': We don't have a timezone
     "RET504",  # 'Unnecessary assignment to `new_name` before `return` statement': Helps to clarify
+    "E731", # Do not assign a `lambda` expression, use a `def`
 
     # Python version support
     "ANN101",  # Missing type annotation for `self` in method: Python 3.11
