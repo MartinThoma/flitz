@@ -17,6 +17,13 @@ class ConfigSelection(BaseModel):
     text_color: str = "red"
 
 
+class ConfigMenu(BaseModel):
+    """Configuration related to the menu."""
+
+    background_color: str = "#eeedeb"
+    text_color: str = "#000000"
+
+
 class Config(BaseModel):
     """
     The configuration base class.
@@ -32,6 +39,7 @@ class Config(BaseModel):
     text_color: str = "#000000"
     background_color: str = "#ffffff"
     selection: ConfigSelection = ConfigSelection()
+    menu: ConfigMenu = ConfigMenu()
 
     @staticmethod
     def load() -> "Config":

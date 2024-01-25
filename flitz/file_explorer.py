@@ -78,6 +78,7 @@ class FileExplorer(tk.Tk):
         if self.search_mode:
             # Reload files and clear search mode
             self.load_files()
+            self.url_bar_label.config(text="Location:")
             self.search_mode = False
 
     def handle_search(self, _: tk.Event) -> None:
@@ -87,6 +88,7 @@ class FileExplorer(tk.Tk):
         if search_term is not None:
             # Perform search and update Treeview
             self.search_files(search_term)
+            self.url_bar_label.config(text="Search:")
             self.search_mode = True
 
     def search_files(self, search_term: str) -> None:
@@ -177,10 +179,13 @@ class FileExplorer(tk.Tk):
 
     def create_urlframe(self) -> None:
         """URL bar with an "up" button."""
-        self.url_frame = tk.Frame(self, background="blue")  # self.cfg.background_color
+        self.url_frame = tk.Frame(
+            self,
+            background=self.cfg.menu.background_color,
+        )  # self.cfg.background_color
         self.url_frame.grid(row=0, column=0, rowspan=1, columnspan=3, sticky="nesw")
         self.url_frame.rowconfigure(0, weight=1, minsize=self.cfg.font_size + 5)
-        self.url_frame.columnconfigure(1, weight=1)
+        self.url_frame.columnconfigure(2, weight=1)
 
         up_path = Path(__file__).resolve().parent / "static/up.png"
         pixels_x = 32
@@ -197,8 +202,17 @@ class FileExplorer(tk.Tk):
         self.up_button.image = up_icon  # type: ignore[attr-defined]
         self.up_button.grid(row=0, column=0, padx=5)
 
+        # Label "Location" in front of the url_bar
+        self.url_bar_label = ttk.Label(
+            self.url_frame,
+            text="Location:",
+            background=self.cfg.menu.background_color,
+            foreground=self.cfg.menu.text_color,
+        )
+        self.url_bar_label.grid(row=0, column=1, padx=5)
+
         self.url_bar = ttk.Entry(self.url_frame, textvariable=self.url_bar_value)
-        self.url_bar.grid(row=0, column=1, columnspan=3, sticky="nsew")
+        self.url_bar.grid(row=0, column=2, columnspan=3, sticky="nsew")
 
     def create_details_frame(self) -> None:
         """Frame showing the files/folders."""
@@ -291,7 +305,7 @@ class FileExplorer(tk.Tk):
     def load_files(self) -> None:
         """Load a list of files/folders for the tree view."""
         self.url_bar.delete(0, tk.END)
-        self.url_bar.insert(0, str(self.url_bar_value))
+        self.url_bar.insert(0, str(self.current_path))
         self.tree.delete(*self.tree.get_children())
 
         entries = sorted(
