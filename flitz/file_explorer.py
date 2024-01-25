@@ -46,9 +46,11 @@ class FileExplorer(tk.Tk):
                 ("selected", self.cfg.selection.text_color),
             ],
             background=[
-                (None, self.cfg.background_color),
+                # Adding `(None, self.cfg.background_color)` here makes the
+                # selection not work anymore
                 ("selected", self.cfg.selection.background_color),
             ],
+            fieldbackground=self.cfg.background_color,
         )
 
         # Set window icon (you need to provide a suitable icon file)
@@ -137,7 +139,7 @@ class FileExplorer(tk.Tk):
         self.url_frame.rowconfigure(0, weight=1, minsize=self.cfg.font_size + 5)
         self.url_frame.columnconfigure(1, weight=1)
 
-        up_path = Path(__file__).resolve().parent / "up.png"
+        up_path = Path(__file__).resolve().parent / "static/up.png"
         pixels_x = 32
         pixels_y = pixels_x
         up_icon = ImageTk.PhotoImage(Image.open(up_path).resize((pixels_x, pixels_y)))
