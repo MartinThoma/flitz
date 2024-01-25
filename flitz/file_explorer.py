@@ -5,6 +5,7 @@ import tkinter as tk
 from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox, ttk
+from tkinter.simpledialog import askstring
 
 from PIL import Image, ImageTk
 
@@ -58,14 +59,56 @@ class FileExplorer(tk.Tk):
         img = tk.PhotoImage(icon_path)
         self.wm_iconphoto(True, img)
 
-        self.current_path = tk.StringVar()
-        self.current_path.set(str(Path(initial_path).resolve()))
+        self.current_path = Path(initial_path).resolve()
+        self.url_bar_value = tk.StringVar()
+        self.url_bar_value.set(str(self.current_path))
+
+        self.search_mode = False  # Flag to track search mode
 
         self.create_widgets()
         # Bind Ctrl +/- for changing font size
         self.bind("<Control-plus>", self.increase_font_size)
         self.bind("<Control-minus>", self.decrease_font_size)
         self.bind("<F2>", self.rename_item)
+        self.bind("<Control-f>", self.handle_search)
+        self.bind("<Escape>", self.exit_search_mode)
+
+    def exit_search_mode(self, _: tk.Event) -> None:
+        """Exit the search mode."""
+        if self.search_mode:
+            # Reload files and clear search mode
+            self.load_files()
+            self.search_mode = False
+
+    def handle_search(self, _: tk.Event) -> None:
+        """Handle the search functionality."""
+        # Open dialog box to input search term
+        search_term = askstring("Search", "Enter search term:")
+        if search_term is not None:
+            # Perform search and update Treeview
+            self.search_files(search_term)
+            self.search_mode = True
+
+    def search_files(self, search_term: str) -> None:
+        """Filter and display files in Treeview based on search term."""
+        path = self.current_path
+        self.tree.delete(*self.tree.get_children())  # Clear existing items
+
+        entries = sorted(Path(path).iterdir(), key=lambda x: (x.is_file(), x.name))
+
+        for entry in entries:
+            if search_term.lower() in entry.name.lower():
+                size = entry.stat().st_size if entry.is_file() else ""
+                type_ = "File" if entry.is_file() else "Folder"
+                date_modified = datetime.fromtimestamp(entry.stat().st_mtime).strftime(
+                    "%Y-%m-%d %H:%M:%S",
+                )
+
+                self.tree.insert(
+                    "",
+                    "end",
+                    values=(entry.name, size, type_, date_modified),
+                )
 
     def rename_item(self, _: tk.Event) -> None:
         """Trigger a rename action."""
@@ -84,8 +127,8 @@ class FileExplorer(tk.Tk):
                         values=(new_name, values[1], values[2], values[3]),
                     )
                     # Perform the actual renaming operation in the file system if needed
-                    old_path = Path(self.current_path.get()) / selected_file
-                    new_path = Path(self.current_path.get()) / new_name
+                    old_path = self.current_path / selected_file
+                    new_path = self.current_path / new_name
 
                     try:
                         old_path.rename(new_path)
@@ -119,7 +162,7 @@ class FileExplorer(tk.Tk):
         Trigger this after the font size was updated by the user.
         """
         font = (self.cfg.font, self.cfg.font_size)
-        self.url_entry.config(font=font)
+        self.url_bar.config(font=font)
         self.style.configure(
             "Treeview",
             rowheight=int(self.cfg.font_size * 2.5),
@@ -154,8 +197,8 @@ class FileExplorer(tk.Tk):
         self.up_button.image = up_icon  # type: ignore[attr-defined]
         self.up_button.grid(row=0, column=0, padx=5)
 
-        self.url_entry = ttk.Entry(self.url_frame, textvariable=self.current_path)
-        self.url_entry.grid(row=0, column=1, columnspan=3, sticky="nsew")
+        self.url_bar = ttk.Entry(self.url_frame, textvariable=self.url_bar_value)
+        self.url_bar.grid(row=0, column=1, columnspan=3, sticky="nsew")
 
     def create_details_frame(self) -> None:
         """Frame showing the files/folders."""
@@ -247,12 +290,14 @@ class FileExplorer(tk.Tk):
 
     def load_files(self) -> None:
         """Load a list of files/folders for the tree view."""
-        path = self.current_path.get()
-        self.url_entry.delete(0, tk.END)
-        self.url_entry.insert(0, path)
+        self.url_bar.delete(0, tk.END)
+        self.url_bar.insert(0, str(self.url_bar_value))
         self.tree.delete(*self.tree.get_children())
 
-        entries = sorted(Path(path).iterdir(), key=lambda x: (x.is_file(), x.name))
+        entries = sorted(
+            self.current_path.iterdir(),
+            key=lambda x: (x.is_file(), x.name),
+        )
 
         try:
             for entry in entries:
@@ -275,19 +320,20 @@ class FileExplorer(tk.Tk):
         selected_item = self.tree.selection()
         if selected_item:
             selected_file = self.tree.item(selected_item, "values")[0]  # type: ignore[call-overload]
-            path = str(Path(self.current_path.get()) / selected_file)
+            path = self.current_path / selected_file
 
             if Path(path).is_dir():
-                self.current_path.set(path)
+                self.url_bar_value.set(str(path))
+                self.current_path = path
                 self.load_files()
             else:
                 open_file(path)
 
     def go_up(self) -> None:
         """Ascend from the current directory."""
-        current_path = self.current_path.get()
-        up_path = Path(current_path).parent
+        up_path = self.current_path.parent
 
         if up_path.exists():
-            self.current_path.set(str(up_path))
+            self.url_bar_value.set(str(up_path))
+            self.current_path = up_path
             self.load_files()
