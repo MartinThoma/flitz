@@ -17,7 +17,10 @@ keybindings:
   font_size_increase: "<Control-plus>"
   font_size_decrease: "<Control-minus>"
   rename_item: "<F2>"
+  create_folder: "<F7>"
+  delete: "<Delete>"
   search: "<Control-f>"
   exit_search: "<Escape>"
   go_up: "<BackSpace>"
+  open_context_menu: "<Button-3>"
 ```

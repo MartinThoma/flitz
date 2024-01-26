@@ -30,9 +30,12 @@ class ConfigKeybindings(BaseModel):
     font_size_increase: str = "<Control-plus>"
     font_size_decrease: str = "<Control-minus>"
     rename_item: str = "<F2>"
+    create_folder: str = "<F7>"
     search: str = "<Control-f>"
     exit_search: str = "<Escape>"
     go_up: str = "<BackSpace>"
+    delete: str = "<Delete>"
+    open_context_menu: str = "<Button-3>"
 
 
 class Config(BaseModel):

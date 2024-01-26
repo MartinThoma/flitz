@@ -10,3 +10,4 @@ Functionality:
 * Ctrl+c / ctrl+v / ctrl+x
     * Tabs (see Notebook widget)
 * drag-and-drop files / folders to move them.
+* Compress a selection

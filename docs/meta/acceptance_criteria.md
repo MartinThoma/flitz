@@ -29,3 +29,12 @@ Features:
 9. Pressing F2 when a file/folder is selected lets the user rename that object.
 10. Allow opening a file (double click or Enter) or descend if it's a folder
 11. Open a search when pressing Ctrl+F
+12. Pressing Esc should:
+    (1) If the context menu is open, close it
+    (2) If not, and if the search is active, deactivate the search
+13. When pressing "DEL", delete the selected file / folder. Ask for confirmation first.
+14. When making a right-click, open a context menu:
+   1. Create Folder
+   2. Create Empty file
+   3. Rename...
+   4. Properties
