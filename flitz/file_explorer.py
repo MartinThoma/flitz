@@ -1,6 +1,7 @@
 """The FileExplorer class."""
 
 import logging
+import shutil
 import tkinter as tk
 from collections.abc import Iterable
 from datetime import datetime
@@ -69,6 +70,7 @@ class FileExplorer(tk.Tk):
 
         self.search_mode = False  # Track if search mode is open
         self.context_menu: tk.Menu | None = None  # Track if context menu is open
+        self.clipboard_data: list[tuple[str, ...]] = []
 
         self.create_widgets()
 
@@ -82,6 +84,8 @@ class FileExplorer(tk.Tk):
         self.bind(self.cfg.keybindings.open_context_menu, self.show_context_menu)
         self.bind(self.cfg.keybindings.delete, self.confirm_delete_item)
         self.bind(self.cfg.keybindings.create_folder, self.create_folder)
+        self.bind(self.cfg.keybindings.copy_selection, self.copy_selection)
+        self.bind(self.cfg.keybindings.paste, self.paste_selection)
 
     def handle_escape_key(self, event: tk.Event) -> None:
         """Close the context menu if open or exit search mode."""
@@ -550,3 +554,27 @@ class FileExplorer(tk.Tk):
             self.url_bar_value.set(str(up_path))
             self.current_path = up_path
             self.load_files()
+
+    def copy_selection(self, _: tk.Event) -> None:
+        """Copy the selected item(s) to the clipboard."""
+        selected_items = self.tree.selection()
+        if selected_items:
+            # Get the values of selected items and store them in clipboard_data
+            self.clipboard_data = [
+                values
+                for item in selected_items
+                if (values := self.tree.item(item, "values")) != ""
+            ]
+
+    def paste_selection(self, _: tk.Event) -> None:
+        """Paste the clipboard data as new items in the Treeview."""
+        if self.clipboard_data:
+            # Insert clipboard data as new items in the Treeview
+            for values in self.clipboard_data:
+                self.tree.insert("", "end", values=values)
+                # Copy the file/directory to the filesystem
+                source_path = values[
+                    FileExplorer.NAME_INDEX
+                ]  # Assuming the first value is the file/directory path
+                destination_path = self.current_path  # Specify your destination path
+                shutil.copy(source_path, destination_path)

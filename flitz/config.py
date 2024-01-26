@@ -36,6 +36,8 @@ class ConfigKeybindings(BaseModel):
     go_up: str = "<BackSpace>"
     delete: str = "<Delete>"
     open_context_menu: str = "<Button-3>"
+    copy_selection: str = "<Control-c>"
+    paste: str = "<Control-v>"
 
 
 class Config(BaseModel):

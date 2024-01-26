@@ -23,4 +23,6 @@ keybindings:
   exit_search: "<Escape>"
   go_up: "<BackSpace>"
   open_context_menu: "<Button-3>"
+  copy: "<Control-c>"
+  paste: "<Control-v>"
 ```

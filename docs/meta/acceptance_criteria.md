@@ -38,3 +38,6 @@ Features:
    2. Create Empty file
    3. Rename...
    4. Properties
+15. Ctrl+C should copy the selection,
+    Ctrl+v should paste the selection,
+    Ctrl+x should cut the selection
