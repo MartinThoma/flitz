@@ -9,6 +9,8 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel
 
+CONFIG_PATH = Path.home() / ".flitz.yml"
+
 
 class ConfigSelection(BaseModel):
     """Configuration related to the selected item."""
@@ -69,11 +71,9 @@ class Config(BaseModel):
         -------
             Config: A Config object representing the loaded or default configuration.
         """
-        config_file = Path.home() / ".flitz.yml"
-
-        if config_file.is_file():
+        if CONFIG_PATH.is_file():
             # Load configuration from file
-            config_data = config_file.read_text()
+            config_data = CONFIG_PATH.read_text()
             config = Config.model_validate(yaml.safe_load(config_data))
         else:
             # Use default configuration

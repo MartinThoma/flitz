@@ -11,7 +11,7 @@ from tkinter.simpledialog import askstring
 
 from PIL import Image, ImageTk
 
-from .config import Config
+from .config import CONFIG_PATH, Config
 from .ui_utils import ask_for_new_name
 from .utils import open_file
 
@@ -86,6 +86,13 @@ class FileExplorer(tk.Tk):
         self.bind(self.cfg.keybindings.create_folder, self.create_folder)
         self.bind(self.cfg.keybindings.copy_selection, self.copy_selection)
         self.bind(self.cfg.keybindings.paste, self.paste_selection)
+
+        # This is on purpose not configurable
+        self.bind("<Control-m>", self.open_settings)
+
+    def open_settings(self, _: tk.Event) -> None:
+        """Open the settings of flitz."""
+        open_file(str(CONFIG_PATH))
 
     def handle_escape_key(self, event: tk.Event) -> None:
         """Close the context menu if open or exit search mode."""
