@@ -60,6 +60,12 @@ class Config(BaseModel):
     selection: ConfigSelection = ConfigSelection()
     menu: ConfigMenu = ConfigMenu()
     keybindings: ConfigKeybindings = ConfigKeybindings()
+    context_menu: list[str] = [
+        "CREATE_FOLDER",
+        "CREATE_FILE",
+        "RENAME",
+        "PROPERTIES",
+    ]
     external_config: list[Path] = []
 
     @staticmethod
@@ -70,7 +76,6 @@ class Config(BaseModel):
         Load it from the users home directory if it exists.
 
         Returns
-        -------
             Config: A Config object representing the loaded or default configuration.
         """
         if CONFIG_PATH.is_file():
@@ -103,12 +108,10 @@ def merge(base_dict: dict[str, Any], dict_to_merge: dict[str, Any]) -> None:
     Recursively merges the values of dict_to_merge into base_dict.
 
     Args:
-    ----
         base_dict: The base dictionary to merge into.
         dict_to_merge: The dictionary whose values will be merged into base_dict.
 
     Returns:
-    -------
         None
     """
     for key, value in dict_to_merge.items():

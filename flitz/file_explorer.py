@@ -12,6 +12,7 @@ from tkinter.simpledialog import askstring
 from PIL import Image, ImageTk
 
 from .config import CONFIG_PATH, Config
+from .context_menu import ContextMenuItem, create_context_menu
 from .ui_utils import ask_for_new_name
 from .utils import open_file
 
@@ -131,11 +132,32 @@ class FileExplorer(tk.Tk):
 
     def show_context_menu(self, event: tk.Event) -> None:
         """Display the context menu."""
-        menu = tk.Menu(self, tearoff=0)
-        menu.add_command(label="Create Folder", command=self.create_folder)
-        menu.add_command(label="Create Empty File", command=self.create_empty_file)
-        menu.add_command(label="Rename...", command=self.rename_item)
-        menu.add_command(label="Properties", command=self.show_properties)
+        item_registry = {
+            "CREATE_FOLDER": ContextMenuItem(
+                name="CREATE_FOLDER",
+                label="Create Folder",
+                action=self.create_folder,
+            ),
+            "CREATE_FILE": ContextMenuItem(
+                name="CREATE_FILE",
+                label="Create Empty File",
+                action=self.create_empty_file,
+            ),
+            "RENAME": ContextMenuItem(
+                name="RENAME",
+                label="Rename...",
+                action=self.rename_item,
+            ),
+            "PROPERTIES": ContextMenuItem(
+                name="PROPERTIES",
+                label="Properties",
+                action=self.show_properties,
+            ),
+        }
+        menu = create_context_menu(
+            self,
+            [item_registry[item] for item in self.cfg.context_menu],
+        )
         menu.post(event.x_root, event.y_root)
         self.context_menu = menu
 

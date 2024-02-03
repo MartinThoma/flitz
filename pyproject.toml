@@ -36,6 +36,7 @@ ignore = [
     # Personal preference
     "D203", # one-blank-line-before-class
     "D212",  # I want multiline-docstrings to start at the second line
+    "D407",  # DashedUnderlineAfterSection
     "D107", # 'Missing docstring in `__init__`' - I'd rather document on class level
     "FBT001", # 'Boolean-typed positional argument in function definition'
     "DTZ006", # 'The use of `datetime.datetime.fromtimestamp()` without `tz` argument is not allowed': We don't have a timezone
@@ -43,6 +44,7 @@ ignore = [
     "E731", # Do not assign a `lambda` expression, use a `def`
     "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
     "PLW2901",  # `for` loop variable `...` overwritten by assignment target
+
 
     # Python version support
     "ANN101",  # Missing type annotation for `self` in method: Python 3.11
