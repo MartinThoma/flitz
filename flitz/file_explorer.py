@@ -391,7 +391,7 @@ class FileExplorer(tk.Tk):
             font=(self.cfg.font, self.cfg.font_size),
         )
 
-    def create_urlframe(self) -> None:
+    def create_url_pane(self) -> None:
         """URL bar with an "up" button."""
         self.url_frame = tk.Frame(
             self,
@@ -428,10 +428,10 @@ class FileExplorer(tk.Tk):
         self.url_bar = ttk.Entry(self.url_frame, textvariable=self.url_bar_value)
         self.url_bar.grid(row=0, column=2, columnspan=3, sticky="nsew")
 
-    def create_details_frame(self) -> None:
+    def create_details_pane(self) -> None:
         """Frame showing the files/folders."""
         self.details_frame = tk.Frame(self, background=self.cfg.background_color)
-        self.details_frame.grid(row=1, column=0, rowspan=1, columnspan=3, sticky="nsew")
+        self.details_frame.grid(row=1, column=1, rowspan=1, columnspan=2, sticky="nsew")
         self.details_frame.columnconfigure(0, weight=1)
         self.details_frame.rowconfigure(0, weight=1)
         # Treeview for the list view
@@ -495,12 +495,106 @@ class FileExplorer(tk.Tk):
         """Create all elements in the window."""
         self.rowconfigure(0, weight=0, minsize=45)
         self.rowconfigure(1, weight=1)
-        self.columnconfigure(0, weight=5, uniform="group1")
-        self.columnconfigure(1, weight=90, uniform="group1")
+        self.columnconfigure(0, weight=0, minsize=80, uniform="group1")
+        self.columnconfigure(1, weight=85, uniform="group1")
         self.columnconfigure(2, weight=5, uniform="group1")
 
-        self.create_urlframe()
-        self.create_details_frame()
+        self.create_url_pane()
+        self.create_navigation_pane()
+        self.create_details_pane()
+
+    def create_navigation_pane(self) -> None:
+        """Create the navigation pane."""
+        self.navigation_frame = tk.Frame(self, background=self.cfg.background_color)
+        self.navigation_frame.grid(
+            row=1,
+            column=0,
+            rowspan=1,
+            columnspan=1,
+            sticky="nsew",
+        )
+        self.navigation_frame.columnconfigure(0, weight=1)
+        self.navigation_frame.rowconfigure(0, weight=1)
+
+        # Create a treeview for bookmarks
+        self.bookmarks_tree = ttk.Treeview(
+            self.navigation_frame,
+            columns=("Path",),
+            show="tree",
+            selectmode="browse",
+        )
+        self.bookmarks_tree.heading("#0", text="Bookmarks")
+        self.bookmarks_tree.column("#0", anchor=tk.W, width=150)
+        self.bookmarks_tree.grid(row=0, column=0, sticky="nsew")
+
+        # Add bookmarks
+        self.add_bookmarks()
+
+    def add_bookmarks(self) -> None:
+        """Add bookmarks to the bookmarks treeview."""
+        # Bookmark items in a hierarchical structure
+        self.bookmarks = {
+            "Home": str(Path.home()),
+        }
+        bookmarks = [
+            ("Pictures", Path.home() / "Pictures"),
+            ("Documents", Path.home() / "Documents"),
+            ("Desktop", Path.home() / "Desktop"),
+            ("Videos", Path.home() / "Videos"),
+            ("Music", Path.home() / "Music"),
+            ("Downloads", Path.home() / "Downloads"),
+        ]
+        for label, path in bookmarks:
+            if path.is_dir():
+                self.bookmarks[label] = str(path)
+
+        self.bookmarks_update()
+
+    def bookmarks_update(self) -> None:
+        """Update the bookmarks pane."""
+        self.bookmarks_tree.delete(*self.bookmarks_tree.get_children())
+
+        # Add bookmarks to the treeview
+        self.bookmarks_tree.insert(
+            "",
+            "end",
+            text="Computer",
+            open=True,
+            tags=("heading",),
+        )
+        for bookmark, path_str in self.bookmarks.items():
+            item = self.bookmarks_tree.insert("", "end", text=bookmark)
+            path = Path(path_str)
+            if path == self.current_path:
+                self.bookmarks_tree.selection_set(item)
+
+        self.bookmarks_tree.tag_configure("heading", font=("Ubuntu Bold", 14, "bold"))
+
+        # Bind double-click event to navigate to the selected bookmark
+        self.bookmarks_tree.bind(
+            "<<TreeviewSelect>>",
+            self.navigate_to_selected_bookmark,
+        )
+
+    def navigate_to_selected_bookmark(self, _: tk.Event) -> None:
+        """Navigate to the selected bookmark."""
+        selected_item = self.bookmarks_tree.focus()
+        if selected_item:
+            item_text = self.bookmarks_tree.item(selected_item, "text")
+            path = self.bookmarks[item_text]
+            self.navigate_to(path)
+
+    def navigate_to(self, path: str) -> None:
+        """Navigate to the specified directory."""
+        new_path = Path(path)
+        if new_path.exists() and new_path.is_dir():
+            self.current_path = new_path
+            self.on_current_path_change()
+        else:
+            messagebox.showerror(
+                "Error",
+                f"The path {path} does not exist or is not a directory.",
+            )
 
     def sort_column(self, column: str, reverse: bool) -> None:
         """Sort by a column of the tree view."""
@@ -569,20 +663,24 @@ class FileExplorer(tk.Tk):
         path = self.current_path / selected_file
 
         if Path(path).is_dir():
-            self.url_bar_value.set(str(path))
             self.current_path = path
-            self.load_files()
+            self.on_current_path_change()
         else:
             open_file(path)
+
+    def on_current_path_change(self) -> None:
+        """Execute actions after the path was updated."""
+        self.url_bar_value.set(str(self.current_path))
+        self.load_files()
+        self.bookmarks_update()
 
     def go_up(self, _: tk.Event | None = None) -> None:
         """Ascend from the current directory."""
         up_path = self.current_path.parent
 
         if up_path.exists():
-            self.url_bar_value.set(str(up_path))
             self.current_path = up_path
-            self.load_files()
+            self.on_current_path_change()
 
     def copy_selection(self, _: tk.Event) -> None:
         """Copy the selected item(s) to the clipboard."""
