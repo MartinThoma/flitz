@@ -5,6 +5,7 @@ This allows customization.
 """
 
 from pathlib import Path
+from typing import Any
 
 import yaml
 from pydantic import BaseModel
@@ -59,6 +60,7 @@ class Config(BaseModel):
     selection: ConfigSelection = ConfigSelection()
     menu: ConfigMenu = ConfigMenu()
     keybindings: ConfigKeybindings = ConfigKeybindings()
+    external_config: list[Path] = []
 
     @staticmethod
     def load() -> "Config":
@@ -79,4 +81,44 @@ class Config(BaseModel):
             # Use default configuration
             config = Config()
 
+        for external_config_path in config.external_config:
+            external_config_path = Path(external_config_path).expanduser().absolute()
+            if external_config_path.is_file():
+                # Load configuration from external file
+                external_config_data = external_config_path.read_text()
+                external_config = Config.model_validate(
+                    yaml.safe_load(external_config_data),
+                )
+                # Update the current config with values from the external config
+                config_dict = config.model_dump()
+                dumped = external_config.model_dump(exclude_unset=True)
+                merge(config_dict, dumped)
+                config = Config.model_validate(config_dict)
+
         return config
+
+
+def merge(base_dict: dict[str, Any], dict_to_merge: dict[str, Any]) -> None:
+    """
+    Recursively merges the values of dict_to_merge into base_dict.
+
+    Args:
+    ----
+        base_dict: The base dictionary to merge into.
+        dict_to_merge: The dictionary whose values will be merged into base_dict.
+
+    Returns:
+    -------
+        None
+    """
+    for key, value in dict_to_merge.items():
+        if (
+            key in base_dict
+            and isinstance(value, dict)
+            and isinstance(base_dict[key], dict)
+        ):
+            # Recursively merge dictionaries if both values are dictionaries
+            merge(base_dict[key], value)
+        else:
+            # Update base_dict with the value from dict_to_merge
+            base_dict[key] = value

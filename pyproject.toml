@@ -42,6 +42,7 @@ ignore = [
     "RET504",  # 'Unnecessary assignment to `new_name` before `return` statement': Helps to clarify
     "E731", # Do not assign a `lambda` expression, use a `def`
     "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+    "PLW2901",  # `for` loop variable `...` overwritten by assignment target
 
     # Python version support
     "ANN101",  # Missing type annotation for `self` in method: Python 3.11

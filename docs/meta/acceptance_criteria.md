@@ -41,3 +41,6 @@ Features:
 15. Ctrl+C should copy the selection,
     Ctrl+v should paste the selection,
     Ctrl+x should cut the selection
+16. Allow referencing `external_config` in the Config file. Those get loaded
+    just like any other configuration. They can (partially) override the
+    existing config.
