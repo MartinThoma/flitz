@@ -45,3 +45,8 @@ def is_hidden(path: Path) -> bool:
             return False
     else:
         return path.name.startswith(".")
+
+
+def get_unicode_symbol(entry: Path) -> str:
+    """Get a symbol to represent the object."""
+    return "🗎" if entry.is_file() else "📁"
