@@ -2,6 +2,7 @@
 
 import logging
 import shutil
+import sys
 import tkinter as tk
 from collections.abc import Iterable
 from datetime import datetime
@@ -49,8 +50,8 @@ class FileExplorer(tk.Tk):
         self.style.map(
             "Treeview",
             foreground=[
-                (None, self.cfg.text_color),
                 ("selected", self.cfg.selection.text_color),
+                (None, self.cfg.text_color),
             ],
             background=[
                 # Adding `(None, self.cfg.background_color)` here makes the
@@ -87,9 +88,18 @@ class FileExplorer(tk.Tk):
         self.bind(self.cfg.keybindings.create_folder, self.create_folder)
         self.bind(self.cfg.keybindings.copy_selection, self.copy_selection)
         self.bind(self.cfg.keybindings.paste, self.paste_selection)
+        self.bind(
+            self.cfg.keybindings.toggle_hidden_file_visibility,
+            self.toggle_hidden_files,
+        )
 
         # This is on purpose not configurable
         self.bind("<Control-m>", self.open_settings)
+
+    def toggle_hidden_files(self, _: tk.Event) -> None:
+        """Toggle showing/hiding hidden files."""
+        self.cfg.show_hidden_files = not self.cfg.show_hidden_files
+        self.load_files()
 
     def open_settings(self, _: tk.Event) -> None:
         """Open the settings of flitz."""
@@ -614,6 +624,25 @@ class FileExplorer(tk.Tk):
         # Reverse sort order for the next click
         self.tree.heading(column, command=lambda: self.sort_column(column, not reverse))
 
+    def is_hidden(self, path: Path) -> bool:
+        """
+        Check if a file or directory is hidden.
+
+        Args:
+            path: The path to check.
+
+        Returns:
+            True if the path is hidden, False otherwise.
+        """
+        if sys.platform.startswith("win"):  # Check if the operating system is Windows
+            try:
+                attrs = path.stat().st_file_attributes
+                return attrs & 2 != 0  # Check if the "hidden" attribute is set
+            except FileNotFoundError:
+                return False
+        else:
+            return path.name.startswith(".")
+
     def load_files(self, select_item: Path | None = None) -> None:
         """Load a list of files/folders for the tree view."""
         self.url_bar.delete(0, tk.END)
@@ -628,6 +657,10 @@ class FileExplorer(tk.Tk):
         try:
             first_seen = False
             for entry in entries:
+                # Skip hidden files if not configured to show them
+                if not self.cfg.show_hidden_files and self.is_hidden(entry):
+                    continue
+
                 size = entry.stat().st_size if entry.is_file() else ""
                 type_ = "File" if entry.is_file() else "Folder"
                 date_modified = datetime.fromtimestamp(entry.stat().st_mtime).strftime(

@@ -16,8 +16,8 @@ CONFIG_PATH = Path.home() / ".flitz.yml"
 class ConfigSelection(BaseModel):
     """Configuration related to the selected item."""
 
-    background_color: str = "#00ff00"
-    text_color: str = "red"
+    background_color: str = "#87a556"
+    text_color: str = "#fcfdfa"
 
 
 class ConfigMenu(BaseModel):
@@ -41,6 +41,7 @@ class ConfigKeybindings(BaseModel):
     open_context_menu: str = "<Button-3>"
     copy_selection: str = "<Control-c>"
     paste: str = "<Control-v>"
+    toggle_hidden_file_visibility: str = "<Control-h>"
 
 
 class Config(BaseModel):
@@ -67,6 +68,7 @@ class Config(BaseModel):
         "PROPERTIES",
     ]
     external_config: list[Path] = []
+    show_hidden_files: bool = False
 
     @staticmethod
     def load() -> "Config":

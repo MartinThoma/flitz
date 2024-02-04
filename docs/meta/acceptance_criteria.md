@@ -44,3 +44,4 @@ Features:
 16. Allow referencing `external_config` in the Config file. Those get loaded
     just like any other configuration. They can (partially) override the
     existing config.
+17. Ctrl+h toggles the visibility of hidden files/folders
