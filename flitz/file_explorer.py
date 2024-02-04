@@ -7,12 +7,10 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 from tkinter.simpledialog import askstring
 
-from PIL import Image, ImageTk
-
 from .actions import CopyPasteMixIn, DeletionMixIn, RenameMixIn, ShowProperties
 from .config import CONFIG_PATH, Config, create_settings
 from .context_menu import ContextMenuItem, create_context_menu
-from .ui import DetailsPaneMixIn, NavigationPaneMixIn
+from .ui import DetailsPaneMixIn, NavigationPaneMixIn, UrlPaneMixIn
 from .utils import get_unicode_symbol, open_file
 
 logger = logging.getLogger(__name__)
@@ -23,6 +21,7 @@ MAX_FONT_SIZE = 40
 
 class FileExplorer(
     tk.Tk,
+    UrlPaneMixIn,
     DetailsPaneMixIn,
     NavigationPaneMixIn,
     DeletionMixIn,
@@ -72,8 +71,6 @@ class FileExplorer(
         self.tk.call("wm", "iconphoto", self._w, img)  # type: ignore[attr-defined]
 
         self.current_path = Path(initial_path).resolve()
-        self.url_bar_value = tk.StringVar()
-        self.url_bar_value.set(str(self.current_path))
 
         self.title(self.cfg.window.title.format(current_path=self.current_path))
 
@@ -253,43 +250,6 @@ class FileExplorer(
             rowheight=int(self.cfg.font_size * 2.5),
             font=(self.cfg.font, self.cfg.font_size),
         )
-
-    def create_url_pane(self) -> None:
-        """URL bar with an "up" button."""
-        self.url_frame = tk.Frame(
-            self,
-            background=self.cfg.menu.background_color,
-        )
-        self.url_frame.grid(row=0, column=0, rowspan=1, columnspan=3, sticky="nesw")
-        self.url_frame.rowconfigure(0, weight=1, minsize=self.cfg.font_size + 5)
-        self.url_frame.columnconfigure(2, weight=1)
-
-        up_path = Path(__file__).resolve().parent / "static/up.png"
-        pixels_x = 32
-        pixels_y = pixels_x
-        up_icon = ImageTk.PhotoImage(Image.open(up_path).resize((pixels_x, pixels_y)))
-        self.up_button = ttk.Button(
-            self.url_frame,
-            image=up_icon,
-            compound=tk.LEFT,
-            command=self.go_up,
-        )
-
-        # Keep a reference to prevent image from being garbage collected
-        self.up_button.image = up_icon  # type: ignore[attr-defined]
-        self.up_button.grid(row=0, column=0, padx=5)
-
-        # Label "Location" in front of the url_bar
-        self.url_bar_label = ttk.Label(
-            self.url_frame,
-            text="Location:",
-            background=self.cfg.menu.background_color,
-            foreground=self.cfg.menu.text_color,
-        )
-        self.url_bar_label.grid(row=0, column=1, padx=5)
-
-        self.url_bar = ttk.Entry(self.url_frame, textvariable=self.url_bar_value)
-        self.url_bar.grid(row=0, column=2, columnspan=3, sticky="nsew")
 
     def create_widgets(self) -> None:
         """Create all elements in the window."""
