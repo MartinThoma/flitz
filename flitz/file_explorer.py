@@ -36,7 +36,6 @@ class FileExplorer(tk.Tk):
     def __init__(self, initial_path: str) -> None:
         super().__init__()
 
-        self.title("File Explorer")
         self.cfg = Config.load()
         self.geometry(f"{self.cfg.window.width}x{self.cfg.window.height}")
 
@@ -69,6 +68,8 @@ class FileExplorer(tk.Tk):
         self.current_path = Path(initial_path).resolve()
         self.url_bar_value = tk.StringVar()
         self.url_bar_value.set(str(self.current_path))
+
+        self.title(self.cfg.window.title.format(current_path=self.current_path))
 
         self.search_mode = False  # Track if search mode is open
         self.context_menu: tk.Menu | None = None  # Track if context menu is open
@@ -708,6 +709,7 @@ class FileExplorer(tk.Tk):
         self.url_bar_value.set(str(self.current_path))
         self.load_files()
         self.bookmarks_update()
+        self.title(self.cfg.window.title.format(current_path=self.current_path))
 
     def go_up(self, _: tk.Event | None = None) -> None:
         """Ascend from the current directory."""
