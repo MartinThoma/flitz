@@ -12,7 +12,7 @@ from tkinter.simpledialog import askstring
 
 from PIL import Image, ImageTk
 
-from .config import CONFIG_PATH, Config
+from .config import CONFIG_PATH, Config, create_settings
 from .context_menu import ContextMenuItem, create_context_menu
 from .ui_utils import ask_for_new_name
 from .utils import open_file
@@ -38,7 +38,7 @@ class FileExplorer(tk.Tk):
 
         self.title("File Explorer")
         self.cfg = Config.load()
-        self.geometry(f"{self.cfg.width}x{self.cfg.height}")
+        self.geometry(f"{self.cfg.window.width}x{self.cfg.window.height}")
 
         self.configure(background=self.cfg.background_color)
         self.style = ttk.Style()
@@ -103,6 +103,8 @@ class FileExplorer(tk.Tk):
 
     def open_settings(self, _: tk.Event) -> None:
         """Open the settings of flitz."""
+        if not CONFIG_PATH.exists():
+            create_settings()
         open_file(str(CONFIG_PATH))
 
     def handle_escape_key(self, event: tk.Event) -> None:

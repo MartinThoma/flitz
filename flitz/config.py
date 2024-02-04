@@ -44,6 +44,13 @@ class ConfigKeybindings(BaseModel):
     toggle_hidden_file_visibility: str = "<Control-h>"
 
 
+class WindowConfig(BaseModel):
+    """Configure the window itself."""
+
+    width: int = 1200
+    height: int = 800
+
+
 class Config(BaseModel):
     """
     The configuration base class.
@@ -54,8 +61,7 @@ class Config(BaseModel):
 
     font: str = "TkDefaultFont"
     font_size: int = 14
-    width: int = 1200
-    height: int = 800
+    window: WindowConfig = WindowConfig()
     text_color: str = "#000000"
     background_color: str = "#ffffff"
     selection: ConfigSelection = ConfigSelection()
@@ -127,3 +133,10 @@ def merge(base_dict: dict[str, Any], dict_to_merge: dict[str, Any]) -> None:
         else:
             # Update base_dict with the value from dict_to_merge
             base_dict[key] = value
+
+
+def create_settings() -> None:
+    """Create the default configurtion file."""
+    config = Config.load()
+    with CONFIG_PATH.open("w") as fp:
+        fp.write(yaml.dump(config.dict()))
