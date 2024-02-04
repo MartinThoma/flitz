@@ -1,8 +1,6 @@
 """The FileExplorer class."""
 
 import logging
-import shutil
-import sys
 import tkinter as tk
 from datetime import datetime
 from pathlib import Path
@@ -11,10 +9,10 @@ from tkinter.simpledialog import askstring
 
 from PIL import Image, ImageTk
 
-from .actions import DeletionMixIn, RenameMixIn, ShowProperties
+from .actions import CopyPasteMixIn, DeletionMixIn, RenameMixIn, ShowProperties
 from .config import CONFIG_PATH, Config, create_settings
 from .context_menu import ContextMenuItem, create_context_menu
-from .utils import open_file
+from .utils import is_hidden, open_file
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +20,7 @@ MIN_FONT_SIZE = 4
 MAX_FONT_SIZE = 40
 
 
-class FileExplorer(tk.Tk, DeletionMixIn, ShowProperties, RenameMixIn):
+class FileExplorer(tk.Tk, DeletionMixIn, ShowProperties, RenameMixIn, CopyPasteMixIn):
     """
     FileExplorer is an app for navigating and exploring files and directories.
 
@@ -72,7 +70,6 @@ class FileExplorer(tk.Tk, DeletionMixIn, ShowProperties, RenameMixIn):
 
         self.search_mode = False  # Track if search mode is open
         self.context_menu: tk.Menu | None = None  # Track if context menu is open
-        self.clipboard_data: list[tuple[str, ...]] = []
 
         self.create_widgets()
 
@@ -194,7 +191,7 @@ class FileExplorer(tk.Tk, DeletionMixIn, ShowProperties, RenameMixIn):
             self.url_bar_label.config(text="Search:")
             self.search_mode = True
 
-    def get_path_unicode(self, entry: Path) -> str:
+    def get_unicode_symbol(self, entry: Path) -> str:
         """Get a symbol to represent the object."""
         return "🗎" if entry.is_file() else "📁"
 
@@ -212,7 +209,7 @@ class FileExplorer(tk.Tk, DeletionMixIn, ShowProperties, RenameMixIn):
                 date_modified = datetime.fromtimestamp(entry.stat().st_mtime).strftime(
                     "%Y-%m-%d %H:%M:%S",
                 )
-                unicode_symbol = self.get_path_unicode(entry)
+                unicode_symbol = self.get_unicode_symbol(entry)
 
                 self.tree.insert(
                     "",
@@ -257,7 +254,7 @@ class FileExplorer(tk.Tk, DeletionMixIn, ShowProperties, RenameMixIn):
         self.url_frame = tk.Frame(
             self,
             background=self.cfg.menu.background_color,
-        )  # self.cfg.background_color
+        )
         self.url_frame.grid(row=0, column=0, rowspan=1, columnspan=3, sticky="nesw")
         self.url_frame.rowconfigure(0, weight=1, minsize=self.cfg.font_size + 5)
         self.url_frame.columnconfigure(2, weight=1)
@@ -447,9 +444,9 @@ class FileExplorer(tk.Tk, DeletionMixIn, ShowProperties, RenameMixIn):
 
     def navigate_to(self, path: str) -> None:
         """Navigate to the specified directory."""
-        new_path = Path(path)
-        if new_path.exists() and new_path.is_dir():
-            self.current_path = new_path
+        path_ = Path(path)
+        if path_.exists() and path_.is_dir():
+            self.current_path = path_
             self.on_current_path_change()
         else:
             messagebox.showerror(
@@ -475,25 +472,6 @@ class FileExplorer(tk.Tk, DeletionMixIn, ShowProperties, RenameMixIn):
         # Reverse sort order for the next click
         self.tree.heading(column, command=lambda: self.sort_column(column, not reverse))
 
-    def is_hidden(self, path: Path) -> bool:
-        """
-        Check if a file or directory is hidden.
-
-        Args:
-            path: The path to check.
-
-        Returns:
-            True if the path is hidden, False otherwise.
-        """
-        if sys.platform.startswith("win"):  # Check if the operating system is Windows
-            try:
-                attrs = path.stat().st_file_attributes
-                return attrs & 2 != 0  # Check if the "hidden" attribute is set
-            except FileNotFoundError:
-                return False
-        else:
-            return path.name.startswith(".")
-
     def load_files(self, select_item: Path | None = None) -> None:
         """Load a list of files/folders for the tree view."""
         self.url_bar.delete(0, tk.END)
@@ -509,7 +487,7 @@ class FileExplorer(tk.Tk, DeletionMixIn, ShowProperties, RenameMixIn):
             first_seen = False
             for entry in entries:
                 # Skip hidden files if not configured to show them
-                if not self.cfg.show_hidden_files and self.is_hidden(entry):
+                if not self.cfg.show_hidden_files and is_hidden(entry):
                     continue
 
                 size = entry.stat().st_size if entry.is_file() else ""
@@ -518,7 +496,7 @@ class FileExplorer(tk.Tk, DeletionMixIn, ShowProperties, RenameMixIn):
                     "%Y-%m-%d %H:%M:%S",
                 )
 
-                prefix = self.get_path_unicode(entry)
+                prefix = self.get_unicode_symbol(entry)
 
                 item_id = self.tree.insert(
                     "",
@@ -566,27 +544,3 @@ class FileExplorer(tk.Tk, DeletionMixIn, ShowProperties, RenameMixIn):
         if up_path.exists():
             self.current_path = up_path
             self.on_current_path_change()
-
-    def copy_selection(self, _: tk.Event) -> None:
-        """Copy the selected item(s) to the clipboard."""
-        selected_items = self.tree.selection()
-        if selected_items:
-            # Get the values of selected items and store them in clipboard_data
-            self.clipboard_data = [
-                values
-                for item in selected_items
-                if (values := self.tree.item(item, "values")) != ""
-            ]
-
-    def paste_selection(self, _: tk.Event) -> None:
-        """Paste the clipboard data as new items in the Treeview."""
-        if self.clipboard_data:
-            # Insert clipboard data as new items in the Treeview
-            for values in self.clipboard_data:
-                self.tree.insert("", "end", values=values)
-                # Copy the file/directory to the filesystem
-                source_path = values[
-                    FileExplorer.NAME_INDEX
-                ]  # Assuming the first value is the file/directory path
-                destination_path = self.current_path  # Specify your destination path
-                shutil.copy(source_path, destination_path)

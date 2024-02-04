@@ -3,6 +3,8 @@
 import logging
 import platform
 import subprocess
+import sys
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -23,3 +25,23 @@ def open_file(file_path: str) -> None:
         )
     else:
         logger.info("Unsupported operating system")
+
+
+def is_hidden(path: Path) -> bool:
+    """
+    Check if a file or directory is hidden.
+
+    Args:
+        path: The path to check.
+
+    Returns:
+        True if the path is hidden, False otherwise.
+    """
+    if sys.platform.startswith("win"):  # Check if the operating system is Windows
+        try:
+            attrs = path.stat().st_file_attributes
+            return attrs & 2 != 0  # Check if the "hidden" attribute is set
+        except FileNotFoundError:
+            return False
+    else:
+        return path.name.startswith(".")
