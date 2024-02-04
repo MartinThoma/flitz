@@ -12,6 +12,7 @@ from PIL import Image, ImageTk
 from .actions import CopyPasteMixIn, DeletionMixIn, RenameMixIn, ShowProperties
 from .config import CONFIG_PATH, Config, create_settings
 from .context_menu import ContextMenuItem, create_context_menu
+from .ui import NavigationPaneMixIn
 from .utils import is_hidden, open_file
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,14 @@ MIN_FONT_SIZE = 4
 MAX_FONT_SIZE = 40
 
 
-class FileExplorer(tk.Tk, DeletionMixIn, ShowProperties, RenameMixIn, CopyPasteMixIn):
+class FileExplorer(
+    tk.Tk,
+    DeletionMixIn,
+    ShowProperties,
+    RenameMixIn,
+    CopyPasteMixIn,
+    NavigationPaneMixIn,
+):
     """
     FileExplorer is an app for navigating and exploring files and directories.
 
@@ -361,99 +369,6 @@ class FileExplorer(tk.Tk, DeletionMixIn, ShowProperties, RenameMixIn, CopyPasteM
         self.create_navigation_pane()
         self.create_details_pane()
 
-    def create_navigation_pane(self) -> None:
-        """Create the navigation pane."""
-        self.navigation_frame = tk.Frame(self, background=self.cfg.background_color)
-        self.navigation_frame.grid(
-            row=1,
-            column=0,
-            rowspan=1,
-            columnspan=1,
-            sticky="nsew",
-        )
-        self.navigation_frame.columnconfigure(0, weight=1)
-        self.navigation_frame.rowconfigure(0, weight=1)
-
-        # Create a treeview for bookmarks
-        self.bookmarks_tree = ttk.Treeview(
-            self.navigation_frame,
-            columns=("Path",),
-            show="tree",
-            selectmode="browse",
-        )
-        self.bookmarks_tree.heading("#0", text="Bookmarks")
-        self.bookmarks_tree.column("#0", anchor=tk.W, width=150)
-        self.bookmarks_tree.grid(row=0, column=0, sticky="nsew")
-
-        # Add bookmarks
-        self.add_bookmarks()
-
-    def add_bookmarks(self) -> None:
-        """Add bookmarks to the bookmarks treeview."""
-        # Bookmark items in a hierarchical structure
-        self.bookmarks = {
-            "Home": str(Path.home()),
-        }
-        bookmarks = [
-            ("Desktop", Path.home() / "Desktop"),
-            ("Downloads", Path.home() / "Downloads"),
-            ("Documents", Path.home() / "Documents"),
-            ("Music", Path.home() / "Music"),
-            ("Pictures", Path.home() / "Pictures"),
-            ("Videos", Path.home() / "Videos"),
-        ]
-        for label, path in bookmarks:
-            if path.is_dir():
-                self.bookmarks[label] = str(path)
-
-        self.bookmarks_update()
-
-    def bookmarks_update(self) -> None:
-        """Update the bookmarks pane."""
-        self.bookmarks_tree.delete(*self.bookmarks_tree.get_children())
-
-        # Add bookmarks to the treeview
-        self.bookmarks_tree.insert(
-            "",
-            "end",
-            text="Computer",
-            open=True,
-            tags=("heading",),
-        )
-        for bookmark, path_str in self.bookmarks.items():
-            item = self.bookmarks_tree.insert("", "end", text=bookmark)
-            path = Path(path_str)
-            if path == self.current_path:
-                self.bookmarks_tree.selection_set(item)
-
-        self.bookmarks_tree.tag_configure("heading", font=("Ubuntu Bold", 14, "bold"))
-
-        # Bind double-click event to navigate to the selected bookmark
-        self.bookmarks_tree.bind(
-            "<<TreeviewSelect>>",
-            self.navigate_to_selected_bookmark,
-        )
-
-    def navigate_to_selected_bookmark(self, _: tk.Event) -> None:
-        """Navigate to the selected bookmark."""
-        selected_item = self.bookmarks_tree.focus()
-        if selected_item:
-            item_text = self.bookmarks_tree.item(selected_item, "text")
-            path = self.bookmarks[item_text]
-            self.navigate_to(path)
-
-    def navigate_to(self, path: str) -> None:
-        """Navigate to the specified directory."""
-        path_ = Path(path)
-        if path_.exists() and path_.is_dir():
-            self.current_path = path_
-            self.on_current_path_change()
-        else:
-            messagebox.showerror(
-                "Error",
-                f"The path {path} does not exist or is not a directory.",
-            )
-
     def sort_column(self, column: str, reverse: bool) -> None:
         """Sort by a column of the tree view."""
         data = [
@@ -534,7 +449,7 @@ class FileExplorer(tk.Tk, DeletionMixIn, ShowProperties, RenameMixIn, CopyPasteM
         """Execute actions after the path was updated."""
         self.url_bar_value.set(str(self.current_path))
         self.load_files()
-        self.bookmarks_update()
+        self.navigation_pane_update()
         self.title(self.cfg.window.title.format(current_path=self.current_path))
 
     def go_up(self, _: tk.Event | None = None) -> None:
