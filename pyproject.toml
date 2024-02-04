@@ -6,6 +6,7 @@ maintainers = [{ name = "Martin Thoma", email = "info@martin-thoma.de" }]
 authors = [{ name = "Martin Thoma", email = "info@martin-thoma.de" }]
 requires-python = ">=3.10"
 classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
   "Operating System :: MacOS",
   "Operating System :: POSIX :: Linux",
   "Programming Language :: Python :: 3 :: Only",

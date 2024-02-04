@@ -19,7 +19,6 @@ flitz is a file manager
    :caption: Meta
    :maxdepth: 1
 
-   meta/planned_features
    meta/CHANGELOG
    meta/acceptance_criteria.md
 
