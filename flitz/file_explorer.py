@@ -61,9 +61,9 @@ class FileExplorer(tk.Tk):
         )
 
         # Set window icon (you need to provide a suitable icon file)
-        icon_path = str(Path(__file__).resolve().parent / "icon.ico")
-        img = tk.PhotoImage(icon_path)
-        self.wm_iconphoto(True, img)
+        icon_path = str(Path(__file__).resolve().parent / "icon.gif")
+        img = tk.Image("photo", file=icon_path)
+        self.tk.call("wm", "iconphoto", self._w, img)  # type: ignore[attr-defined]
 
         self.current_path = Path(initial_path).resolve()
         self.url_bar_value = tk.StringVar()
@@ -537,12 +537,12 @@ class FileExplorer(tk.Tk):
             "Home": str(Path.home()),
         }
         bookmarks = [
-            ("Pictures", Path.home() / "Pictures"),
-            ("Documents", Path.home() / "Documents"),
             ("Desktop", Path.home() / "Desktop"),
-            ("Videos", Path.home() / "Videos"),
-            ("Music", Path.home() / "Music"),
             ("Downloads", Path.home() / "Downloads"),
+            ("Documents", Path.home() / "Documents"),
+            ("Music", Path.home() / "Music"),
+            ("Pictures", Path.home() / "Pictures"),
+            ("Videos", Path.home() / "Videos"),
         ]
         for label, path in bookmarks:
             if path.is_dir():
