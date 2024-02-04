@@ -12,6 +12,7 @@ from tkinter.simpledialog import askstring
 
 from PIL import Image, ImageTk
 
+from .actions import DeletionMixIn
 from .config import CONFIG_PATH, Config, create_settings
 from .context_menu import ContextMenuItem, create_context_menu
 from .ui_utils import ask_for_new_name
@@ -23,7 +24,7 @@ MIN_FONT_SIZE = 4
 MAX_FONT_SIZE = 40
 
 
-class FileExplorer(tk.Tk):
+class FileExplorer(tk.Tk, DeletionMixIn):
     """
     FileExplorer is an app for navigating and exploring files and directories.
 
@@ -117,31 +118,6 @@ class FileExplorer(tk.Tk):
             elif self.search_mode:
                 # Deactivate search mode if active
                 self.exit_search_mode(event)
-
-    def confirm_delete_item(self, _: tk.Event) -> None:
-        """Ask for confirmation before deleting the selected file/folder."""
-        selected_item = self.tree.selection()
-        if selected_item:
-            values = self.tree.item(selected_item, "values")  # type: ignore[call-overload]
-            selected_file = values[FileExplorer.NAME_INDEX]
-            confirmation = messagebox.askokcancel(
-                "Confirm Deletion",
-                f"Are you sure you want to delete '{selected_file}'?",
-            )
-            if confirmation:
-                self.delete_item(selected_file)
-
-    def delete_item(self, selected_file: str) -> None:
-        """Delete the selected file/folder."""
-        file_path = self.current_path / selected_file
-        try:
-            if file_path.is_file():
-                file_path.unlink()  # Delete file
-            elif file_path.is_dir():
-                file_path.rmdir()  # Delete directory
-            self.load_files()  # Refresh the Treeview after deletion
-        except OSError as e:
-            messagebox.showerror("Error", f"Failed to delete {file_path}: {e}")
 
     def show_context_menu(self, event: tk.Event) -> None:
         """Display the context menu."""
