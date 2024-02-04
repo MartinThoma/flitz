@@ -11,10 +11,9 @@ from tkinter.simpledialog import askstring
 
 from PIL import Image, ImageTk
 
-from .actions import DeletionMixIn, ShowProperties
+from .actions import DeletionMixIn, RenameMixIn, ShowProperties
 from .config import CONFIG_PATH, Config, create_settings
 from .context_menu import ContextMenuItem, create_context_menu
-from .ui_utils import ask_for_new_name
 from .utils import open_file
 
 logger = logging.getLogger(__name__)
@@ -23,7 +22,7 @@ MIN_FONT_SIZE = 4
 MAX_FONT_SIZE = 40
 
 
-class FileExplorer(tk.Tk, DeletionMixIn, ShowProperties):
+class FileExplorer(tk.Tk, DeletionMixIn, ShowProperties, RenameMixIn):
     """
     FileExplorer is an app for navigating and exploring files and directories.
 
@@ -220,47 +219,6 @@ class FileExplorer(tk.Tk, DeletionMixIn, ShowProperties):
                     "end",
                     values=(unicode_symbol, entry.name, size, type_, date_modified),
                 )
-
-    def rename_item(self, _: tk.Event | None = None) -> None:
-        """Trigger a rename action."""
-        selected_item = self.tree.selection()
-        if selected_item:
-            values = self.tree.item(selected_item, "values")  # type: ignore[call-overload]
-            if values:
-                selected_file = values[FileExplorer.NAME_INDEX]
-                # Implement the renaming logic using the selected_file
-                # You may use an Entry widget or a dialog to get the new name
-                new_name = ask_for_new_name(selected_file)
-                if new_name:
-                    # Update the treeview and perform the renaming
-                    self.tree.item(
-                        selected_item,  # type: ignore[call-overload]
-                        values=(new_name, values[1], values[2], values[3]),
-                    )
-                    # Perform the actual renaming operation in the file system if needed
-                    old_path = self.current_path / selected_file
-                    new_path = self.current_path / new_name
-
-                    try:
-                        old_path.rename(new_path)
-                        assert FileExplorer.NAME_INDEX == 1  # noqa: S101
-                        assert len(values) == FileExplorer.COLUMNS  # noqa: S101
-                        self.tree.item(
-                            selected_item,  # type: ignore[call-overload]
-                            values=(
-                                values[0],
-                                new_name,
-                                values[2],
-                                values[3],
-                                values[4],
-                            ),
-                        )
-                    except OSError as e:
-                        # Handle errors, for example, show an error message
-                        messagebox.showerror(
-                            "Error",
-                            f"Error renaming {selected_file}: {e}",
-                        )
 
     def increase_font_size(self, _: tk.Event) -> None:
         """Increase the font size by one, up to MAX_FONT_SIZE."""
