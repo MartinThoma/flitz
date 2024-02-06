@@ -7,6 +7,8 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 from tkinter.simpledialog import askstring
 
+import pkg_resources  # ty
+
 from .actions import CopyPasteMixIn, DeletionMixIn, RenameMixIn, ShowProperties
 from .config import CONFIG_PATH, Config, create_settings
 from .context_menu import ContextMenuItem, create_context_menu
@@ -43,6 +45,8 @@ class FileExplorer(
 
         self.cfg = Config.load()
         self.geometry(f"{self.cfg.window.width}x{self.cfg.window.height}")
+
+        self.load_context_menu_items()
 
         self.configure(background=self.cfg.background_color)
         self.style = ttk.Style()
@@ -120,36 +124,44 @@ class FileExplorer(
                 # Deactivate search mode if active
                 self.exit_search_mode(event)
 
-    def show_context_menu(self, event: tk.Event) -> None:
-        """Display the context menu."""
-        item_registry = {
-            "CREATE_FOLDER": ContextMenuItem(
+    def load_context_menu_items(self) -> None:
+        """Register context menu items."""
+        self.registered_context_menu_items = [
+            ContextMenuItem(
                 name="CREATE_FOLDER",
                 label="Create Folder",
-                action=self.create_folder,
+                action=lambda _: self.create_folder(),
             ),
-            "CREATE_FILE": ContextMenuItem(
+            ContextMenuItem(
                 name="CREATE_FILE",
                 label="Create Empty File",
-                action=self.create_empty_file,
+                action=lambda _: self.create_empty_file(),
             ),
-            "RENAME": ContextMenuItem(
+            ContextMenuItem(
                 name="RENAME",
                 label="Rename...",
-                action=self.rename_item,
+                action=lambda _: self.rename_item(),
             ),
-            "PROPERTIES": ContextMenuItem(
+            ContextMenuItem(
                 name="PROPERTIES",
                 label="Properties",
-                action=self.show_properties,
+                action=lambda _: self.show_properties(),
             ),
-        }
-        menu = create_context_menu(
+        ]
+
+        entry_point_group = "flitz"
+        for entry_point in pkg_resources.iter_entry_points(group=entry_point_group):
+            context_menu_item = entry_point.load()
+            self.registered_context_menu_items.append(context_menu_item)
+
+    def show_context_menu(self, event: tk.Event) -> None:
+        """Display the context menu."""
+        item_registry = {item.name: item for item in self.registered_context_menu_items}
+        self.context_menu = create_context_menu(
             self,
             [item_registry[item] for item in self.cfg.context_menu],
         )
-        menu.post(event.x_root, event.y_root)
-        self.context_menu = menu
+        self.context_menu.post(event.x_root, event.y_root)
 
     def create_folder(self, _: tk.Event | None = None) -> None:
         """Create a folder."""

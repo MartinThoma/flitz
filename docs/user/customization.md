@@ -62,3 +62,31 @@ selection:
   background_color: "#eee7d5"
   text_color: "#647aa4"
 ```
+
+
+## Context Menu items
+
+You can provide custom context menu items. Just create a package that uses the
+"flitz" entry point via `pyproject.toml`:
+
+```toml
+[project.entry-points."flitz"]
+flitz_compress = "flitz_compress:context_menu_item"
+```
+
+and provide it in `flitz_compress/__init__.py` like this:
+
+```python
+from flitz.context_menu import ContextMenuItem
+
+
+def compress_selection(selection: list):
+    print(f"Compressing {selection}")
+
+
+context_menu_item = ContextMenuItem(
+    name="COMPRESS",
+    label="Compress selection",
+    action=compress_selection,
+)
+```
