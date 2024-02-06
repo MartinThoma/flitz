@@ -21,10 +21,12 @@ class ContextMenuItem:
         name: str,
         label: str,
         action: Callable[[list[Path]], None],
+        is_active: Callable[[list[Path]], bool],
     ) -> None:
         self.name = name
         self.label = label
         self.action = action
+        self.is_active = is_active
 
 
 def create_context_menu(root: tk.Tk, items: list[ContextMenuItem]) -> tk.Menu:
@@ -40,8 +42,9 @@ def create_context_menu(root: tk.Tk, items: list[ContextMenuItem]) -> tk.Menu:
     values = [root.tree.item(item, "values") for item in selection]  # type: ignore[attr-defined, call-overload]
     selected_files = [root.current_path / value[root.NAME_INDEX] for value in values]  # type: ignore[attr-defined]
     for item in items:
-        menu.add_command(
-            label=item.label,
-            command=lambda item=item: item.action(selected_files),  # type: ignore[misc]
-        )
+        if item.is_active(selected_files):
+            menu.add_command(
+                label=item.label,
+                command=lambda item=item: item.action(selected_files),  # type: ignore[misc]
+            )
     return menu

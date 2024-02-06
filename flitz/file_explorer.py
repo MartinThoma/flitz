@@ -131,21 +131,25 @@ class FileExplorer(
                 name="CREATE_FOLDER",
                 label="Create Folder",
                 action=lambda _: self.create_folder(),
+                is_active=lambda _: True,
             ),
             ContextMenuItem(
                 name="CREATE_FILE",
                 label="Create Empty File",
                 action=lambda _: self.create_empty_file(),
+                is_active=lambda _: True,
             ),
             ContextMenuItem(
                 name="RENAME",
                 label="Rename...",
                 action=lambda _: self.rename_item(),
+                is_active=lambda selection: len(selection) == 1,
             ),
             ContextMenuItem(
                 name="PROPERTIES",
                 label="Properties",
                 action=lambda _: self.show_properties(),
+                is_active=lambda _: True,
             ),
         ]
 
@@ -156,6 +160,8 @@ class FileExplorer(
 
     def show_context_menu(self, event: tk.Event) -> None:
         """Display the context menu."""
+        if hasattr(self, "context_menu") and self.context_menu:
+            self.context_menu.destroy()
         item_registry = {item.name: item for item in self.registered_context_menu_items}
         self.context_menu = create_context_menu(
             self,
