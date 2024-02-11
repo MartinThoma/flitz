@@ -14,7 +14,6 @@ class UrlPaneMixIn:
     """The URL pane."""
 
     cfg: Config
-    current_path: Path
     go_up: Callable[[], None]
 
     def create_url_pane(self) -> None:
@@ -52,6 +51,6 @@ class UrlPaneMixIn:
         self.url_bar_label.grid(row=0, column=1, padx=5)
 
         self.url_bar_value = tk.StringVar()
-        self.url_bar_value.set(str(self.current_path))
+        self.url_bar_value.set(str(self.cfg.current_path))
         self.url_bar = ttk.Entry(self.url_frame, textvariable=self.url_bar_value)
         self.url_bar.grid(row=0, column=2, columnspan=3, sticky="nsew")
