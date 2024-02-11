@@ -281,8 +281,11 @@ class FileExplorer(
         self.create_navigation_pane()
         self.create_details_pane()
 
-    def on_current_path_change(self) -> None:
-        """Execute actions after the path was updated."""
+    def set_current_path(self, current_path: Path) -> None:
+        """Set the current path and update the UI."""
+        self.current_path = current_path.resolve()
+
+        # Execute actions after the path was updated.
         self.url_bar.delete(0, tk.END)
         self.url_bar.insert(0, str(self.current_path))
         self.url_bar_value.set(str(self.current_path))
@@ -295,5 +298,4 @@ class FileExplorer(
         up_path = self.current_path.parent
 
         if up_path.exists():
-            self.current_path = up_path
-            self.on_current_path_change()
+            self.set_current_path(up_path)

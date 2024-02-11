@@ -16,7 +16,7 @@ class DetailsPaneMixIn:
     cfg: Config
     NAME_INDEX: int
     current_path: Path
-    on_current_path_change: Callable[[], None]
+    set_current_path: Callable[[Path], None]
     update_font_size: Callable[[], None]
 
     def create_details_pane(self) -> None:
@@ -151,7 +151,6 @@ class DetailsPaneMixIn:
         path = self.current_path / selected_file
 
         if Path(path).is_dir():
-            self.current_path = path
-            self.on_current_path_change()
+            self.set_current_path(path)
         else:
             open_file(path)
