@@ -24,6 +24,19 @@ dependencies = [
   "pyyaml",
   "setuptools",
 ]
+[project.optional-dependencies]
+dev = [
+  "black",
+  "flit",
+  "pip-tools",
+  "pre-commit<2.18.0",
+  "wheel",
+]
+[project.urls]
+"Bug Reports" = "https://github.com/MartinThoma/flitz/issues"
+Changelog = "https://github.com/MartinThoma/flitz/blob/main/CHANGELOG.md"
+Documentation = "https://flitz.readthedocs.io/en/latest/"
+Source = "https://github.com/MartinThoma/flitz"
 [project.scripts]
 flitz = "flitz.cli:entry_point"
 
