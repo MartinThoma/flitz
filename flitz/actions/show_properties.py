@@ -4,6 +4,7 @@ from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox, ttk
+from typing import Any
 
 from flitz.file_properties_dialog import FilePropertiesDialog
 
@@ -14,6 +15,9 @@ class ShowProperties:
     tree: ttk.Treeview
     current_path: Path
     NAME_INDEX: int
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
 
     def show_properties(self) -> None:
         """Show properties."""

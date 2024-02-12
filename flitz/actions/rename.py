@@ -3,6 +3,7 @@
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
+from typing import Any
 
 from flitz.ui_utils import ask_for_new_name
 
@@ -14,6 +15,9 @@ class RenameMixIn:
     COLUMNS: int
     tree: ttk.Treeview
     current_path: Path
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
 
     def rename_item(self, _: tk.Event | None = None) -> None:
         """Trigger a rename action."""

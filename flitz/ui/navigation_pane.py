@@ -4,8 +4,10 @@ import tkinter as tk
 from collections.abc import Callable
 from pathlib import Path
 from tkinter import messagebox, ttk
+from typing import Any
 
 from flitz.config import Config
+from flitz.events import current_path_changed
 
 
 class NavigationPaneMixIn:
@@ -13,7 +15,11 @@ class NavigationPaneMixIn:
 
     cfg: Config
     current_path: Path
-    on_current_path_change: Callable[[], None]
+    set_current_path: Callable[[Path], None]
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        current_path_changed.consumed_by(self.navigation_pane_update)
 
     def create_navigation_pane(self) -> None:
         """Create the navigation pane."""
@@ -100,8 +106,7 @@ class NavigationPaneMixIn:
         """Navigate to the specified directory."""
         path_ = Path(path)
         if path_.exists() and path_.is_dir():
-            self.current_path = path_
-            self.on_current_path_change()
+            self.set_current_path(path_)
         else:
             messagebox.showerror(
                 "Error",

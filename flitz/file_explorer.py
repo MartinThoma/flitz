@@ -12,6 +12,7 @@ import pkg_resources  # ty
 from .actions import CopyPasteMixIn, DeletionMixIn, RenameMixIn, ShowProperties
 from .config import CONFIG_PATH, Config, create_settings
 from .context_menu import ContextMenuItem, create_context_menu
+from .events import current_path_changed
 from .ui import DetailsPaneMixIn, NavigationPaneMixIn, UrlPaneMixIn
 from .utils import get_unicode_symbol, open_file
 
@@ -22,7 +23,6 @@ MAX_FONT_SIZE = 40
 
 
 class FileExplorer(
-    tk.Tk,
     UrlPaneMixIn,
     DetailsPaneMixIn,
     NavigationPaneMixIn,
@@ -30,6 +30,7 @@ class FileExplorer(
     ShowProperties,
     RenameMixIn,
     CopyPasteMixIn,
+    tk.Tk,
 ):
     """
     FileExplorer is an app for navigating and exploring files and directories.
@@ -82,6 +83,12 @@ class FileExplorer(
         self.context_menu: tk.Menu | None = None  # Track if context menu is open
 
         self.create_widgets()
+
+        def set_title() -> None:
+            title = self.cfg.window.title.format(current_path=self.current_path)
+            self.title(title)
+
+        current_path_changed.consumed_by(set_title)
 
         # Key bindings
         self.bind(self.cfg.keybindings.font_size_increase, self.increase_font_size)
@@ -284,14 +291,7 @@ class FileExplorer(
     def set_current_path(self, current_path: Path) -> None:
         """Set the current path and update the UI."""
         self.current_path = current_path.resolve()
-
-        # Execute actions after the path was updated.
-        self.url_bar.delete(0, tk.END)
-        self.url_bar.insert(0, str(self.current_path))
-        self.url_bar_value.set(str(self.current_path))
-        self.load_files()
-        self.navigation_pane_update()
-        self.title(self.cfg.window.title.format(current_path=self.current_path))
+        current_path_changed.produce()
 
     def go_up(self, _: tk.Event | None = None) -> None:
         """Ascend from the current directory."""
