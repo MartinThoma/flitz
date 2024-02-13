@@ -29,7 +29,6 @@ class FileExplorer(
     ShowProperties,
     RenameMixIn,
     CopyPasteMixIn,
-    tk.Tk,
 ):
     """FileExplorer is an app for navigating and exploring files and directories."""
 
@@ -53,7 +52,7 @@ class FileExplorer(
         )
 
         self.search_mode = False  # Track if search mode is open
-        self.context_menu: tk.Menu | None = None  # Track if context menu is open
+        self.context_menu = None  # Track if context menu is open
 
         self.create_widgets()
 
@@ -266,12 +265,6 @@ class FileExplorer(
 
     def create_widgets(self) -> None:
         """Create all elements in the window."""
-        self.rowconfigure(0, weight=0, minsize=45)
-        self.rowconfigure(1, weight=1)
-        self.columnconfigure(0, weight=0, minsize=80, uniform="group1")
-        self.columnconfigure(1, weight=85, uniform="group1")
-        self.columnconfigure(2, weight=5, uniform="group1")
-
         self.create_url_pane()
         self.create_navigation_pane()
         self.create_details_pane()
