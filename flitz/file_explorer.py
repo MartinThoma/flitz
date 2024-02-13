@@ -1,13 +1,12 @@
 """The FileExplorer class."""
 
 import logging
-import tkinter as tk
 from datetime import datetime
 from pathlib import Path
-from tkinter import messagebox, ttk
-from tkinter.simpledialog import askstring
 
 import pkg_resources  # ty
+
+from flitz.frontends.base import Frontend
 
 from .actions import CopyPasteMixIn, DeletionMixIn, RenameMixIn, ShowProperties
 from .config import CONFIG_PATH, Config, create_settings
@@ -30,57 +29,30 @@ class FileExplorer(
     ShowProperties,
     RenameMixIn,
     CopyPasteMixIn,
-    tk.Tk,
 ):
-    """
-    FileExplorer is an app for navigating and exploring files and directories.
-
-    It's using Tkinter.
-    """
+    """FileExplorer is an app for navigating and exploring files and directories."""
 
     NAME_INDEX = 1
     COLUMNS = 5
 
-    def __init__(self, initial_path: str) -> None:
+    def __init__(self, initial_path: str, cfg: Config, frontend: Frontend) -> None:
         super().__init__()
 
-        self.cfg = Config.load()
-        self.geometry(f"{self.cfg.window.width}x{self.cfg.window.height}")
+        self.frontend = frontend
+
+        self.cfg = cfg
+        self.frontend.set_geometry(self.cfg.window.width, self.cfg.window.height)
 
         self.load_context_menu_items()
 
-        self.configure(background=self.cfg.background_color)
-        self.style = ttk.Style()
-        self.style.theme_use("clam")  # necessary to get the selection highlight
-        self.style.configure(
-            "Treeview.Heading",
-            font=(self.cfg.font, self.cfg.font_size),
-        )
-        self.style.map(
-            "Treeview",
-            foreground=[
-                ("selected", self.cfg.selection.text_color),
-                (None, self.cfg.text_color),
-            ],
-            background=[
-                # Adding `(None, self.cfg.background_color)` here makes the
-                # selection not work anymore
-                ("selected", self.cfg.selection.background_color),
-            ],
-            fieldbackground=self.cfg.background_color,
-        )
-
-        # Set window icon (you need to provide a suitable icon file)
-        icon_path = str(Path(__file__).resolve().parent / "icon.gif")
-        img = tk.Image("photo", file=icon_path)
-        self.tk.call("wm", "iconphoto", self._w, img)  # type: ignore[attr-defined]
-
         self.current_path = Path(initial_path).resolve()
 
-        self.title(self.cfg.window.title.format(current_path=self.current_path))
+        self.frontend.set_title(
+            self.cfg.window.title.format(current_path=self.current_path),
+        )
 
         self.search_mode = False  # Track if search mode is open
-        self.context_menu: tk.Menu | None = None  # Track if context menu is open
+        self.context_menu = None  # Track if context menu is open
 
         self.create_widgets()
 
@@ -91,37 +63,52 @@ class FileExplorer(
         current_path_changed.consumed_by(set_title)
 
         # Key bindings
-        self.bind(self.cfg.keybindings.font_size_increase, self.increase_font_size)
-        self.bind(self.cfg.keybindings.font_size_decrease, self.decrease_font_size)
-        self.bind(self.cfg.keybindings.rename_item, self.rename_item)
-        self.bind(self.cfg.keybindings.search, self.handle_search)
-        self.bind(self.cfg.keybindings.exit_search, self.handle_escape_key)
-        self.bind(self.cfg.keybindings.go_up, self.go_up)
-        self.bind(self.cfg.keybindings.open_context_menu, self.show_context_menu)
-        self.bind(self.cfg.keybindings.delete, self.confirm_delete_item)
-        self.bind(self.cfg.keybindings.create_folder, self.create_folder)
-        self.bind(self.cfg.keybindings.copy_selection, self.copy_selection)
-        self.bind(self.cfg.keybindings.paste, self.paste_selection)
-        self.bind(
+        self.frontend.bind(
+            self.cfg.keybindings.font_size_increase,
+            lambda event: self.increase_font_size(),
+        )
+        self.frontend.bind(
+            self.cfg.keybindings.font_size_decrease,
+            lambda event: self.decrease_font_size(),
+        )
+        self.frontend.bind(self.cfg.keybindings.rename_item, self.rename_item)
+        self.frontend.bind(
+            self.cfg.keybindings.search,
+            lambda event: self.handle_search(),
+        )
+        self.frontend.bind(self.cfg.keybindings.exit_search, self.handle_escape_key)
+        self.frontend.bind(self.cfg.keybindings.go_up, lambda event: self.go_up())
+        self.frontend.bind(
+            self.cfg.keybindings.open_context_menu,
+            self.show_context_menu,
+        )
+        self.frontend.bind(self.cfg.keybindings.delete, self.confirm_delete_item)
+        self.frontend.bind(
+            self.cfg.keybindings.create_folder,
+            lambda event: self.create_folder(),
+        )
+        self.frontend.bind(self.cfg.keybindings.copy_selection, self.copy_selection)
+        self.frontend.bind(self.cfg.keybindings.paste, self.paste_selection)
+        self.frontend.bind(
             self.cfg.keybindings.toggle_hidden_file_visibility,
-            self.toggle_hidden_files,
+            lambda event: self.toggle_hidden_files(),
         )
 
         # This is on purpose not configurable
-        self.bind("<Control-m>", self.open_settings)
+        self.frontend.bind("<Control-m>", lambda event: self.open_settings())
 
-    def toggle_hidden_files(self, _: tk.Event) -> None:
+    def toggle_hidden_files(self) -> None:
         """Toggle showing/hiding hidden files."""
         self.cfg.show_hidden_files = not self.cfg.show_hidden_files
         self.load_files()
 
-    def open_settings(self, _: tk.Event) -> None:
+    def open_settings(self) -> None:
         """Open the settings of flitz."""
         if not CONFIG_PATH.exists():
             create_settings()
         open_file(str(CONFIG_PATH))
 
-    def handle_escape_key(self, event: tk.Event) -> None:
+    def handle_escape_key(self, event) -> None:
         """Close the context menu if open or exit search mode."""
         if hasattr(self, "context_menu"):
             if self.context_menu:
@@ -129,7 +116,7 @@ class FileExplorer(
                 self.context_menu.destroy()
             elif self.search_mode:
                 # Deactivate search mode if active
-                self.exit_search_mode(event)
+                self.exit_search_mode()
 
     def load_context_menu_items(self) -> None:
         """Register context menu items."""
@@ -165,7 +152,7 @@ class FileExplorer(
             context_menu_item = entry_point.load()
             self.registered_context_menu_items.append(context_menu_item)
 
-    def show_context_menu(self, event: tk.Event) -> None:
+    def show_context_menu(self, event) -> None:
         """Display the context menu."""
         if hasattr(self, "context_menu") and self.context_menu:
             self.context_menu.destroy()
@@ -176,7 +163,7 @@ class FileExplorer(
         )
         self.context_menu.post(event.x_root, event.y_root)
 
-    def create_folder(self, _: tk.Event | None = None) -> None:
+    def create_folder(self) -> None:
         """Create a folder."""
         folder_name = askstring("Create Folder", "Enter folder name:")
         if folder_name:
@@ -204,7 +191,7 @@ class FileExplorer(
             except OSError as e:
                 messagebox.showerror("Error", f"Failed to create file: {e}")
 
-    def exit_search_mode(self, _: tk.Event) -> None:
+    def exit_search_mode(self) -> None:
         """Exit the search mode."""
         if self.search_mode:
             # Reload files and clear search mode
@@ -212,7 +199,7 @@ class FileExplorer(
             self.url_bar_label.config(text="Location:")
             self.search_mode = False
 
-    def handle_search(self, _: tk.Event) -> None:
+    def handle_search(self) -> None:
         """Handle the search functionality."""
         # Open dialog box to input search term
         search_term = askstring("Search", "Enter search term:")
@@ -244,13 +231,13 @@ class FileExplorer(
                     values=(unicode_symbol, entry.name, size, type_, date_modified),
                 )
 
-    def increase_font_size(self, _: tk.Event) -> None:
+    def increase_font_size(self) -> None:
         """Increase the font size by one, up to MAX_FONT_SIZE."""
         if self.cfg.font_size < MAX_FONT_SIZE:
             self.cfg.font_size += 1
             self.update_font_size()
 
-    def decrease_font_size(self, _: tk.Event) -> None:
+    def decrease_font_size(self) -> None:
         """Decrease the font size by one, down to MIN_FONT_SIZE."""
         if self.cfg.font_size > MIN_FONT_SIZE:
             self.cfg.font_size -= 1
@@ -278,12 +265,6 @@ class FileExplorer(
 
     def create_widgets(self) -> None:
         """Create all elements in the window."""
-        self.rowconfigure(0, weight=0, minsize=45)
-        self.rowconfigure(1, weight=1)
-        self.columnconfigure(0, weight=0, minsize=80, uniform="group1")
-        self.columnconfigure(1, weight=85, uniform="group1")
-        self.columnconfigure(2, weight=5, uniform="group1")
-
         self.create_url_pane()
         self.create_navigation_pane()
         self.create_details_pane()
@@ -293,7 +274,7 @@ class FileExplorer(
         self.current_path = current_path.resolve()
         current_path_changed.produce()
 
-    def go_up(self, _: tk.Event | None = None) -> None:
+    def go_up(self) -> None:
         """Ascend from the current directory."""
         up_path = self.current_path.parent
 
