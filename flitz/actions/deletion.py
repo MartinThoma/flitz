@@ -4,6 +4,7 @@ import tkinter as tk
 from collections.abc import Callable
 from pathlib import Path
 from tkinter import messagebox, ttk
+from typing import Any
 
 
 class DeletionMixIn:
@@ -13,6 +14,9 @@ class DeletionMixIn:
     tree: ttk.Treeview
     load_files: Callable[[], None]
     NAME_INDEX: int
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
 
     def confirm_delete_item(self, _: tk.Event) -> None:
         """Ask for confirmation before deleting the selected file/folder."""

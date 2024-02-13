@@ -4,6 +4,7 @@ import shutil
 import tkinter as tk
 from pathlib import Path
 from tkinter import ttk
+from typing import Any
 
 
 class CopyPasteMixIn:
@@ -13,7 +14,8 @@ class CopyPasteMixIn:
     NAME_INDEX: int
     current_path: Path
 
-    def __init__(self) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
         self.clipboard_data: list[tuple[str, ...]] = []
 
     def copy_selection(self, _: tk.Event) -> None:

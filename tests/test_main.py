@@ -3,7 +3,7 @@
 
 def test_initialization(file_explorer):
     """The FileExplorer can be initialized."""
-    assert file_explorer.title() == "File Explorer"
+    assert file_explorer.title() == "flitz"
 
 
 def test_load_files(file_explorer):
@@ -24,7 +24,7 @@ def test_on_item_double_click(file_explorer):
 
 def test_go_up(file_explorer):
     """The user can go one folder up."""
-    initial_path = file_explorer.current_path.get()
+    initial_path = file_explorer.current_path
     file_explorer.go_up()
 
-    assert initial_path != file_explorer.current_path.get()
+    assert initial_path != file_explorer.current_path

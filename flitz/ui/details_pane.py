@@ -5,8 +5,10 @@ from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from tkinter import ttk
+from typing import Any
 
 from flitz.config import Config
+from flitz.events import current_path_changed
 from flitz.utils import get_unicode_symbol, is_hidden, open_file
 
 
@@ -16,8 +18,12 @@ class DetailsPaneMixIn:
     cfg: Config
     NAME_INDEX: int
     current_path: Path
-    on_current_path_change: Callable[[], None]
+    set_current_path: Callable[[Path], None]
     update_font_size: Callable[[], None]
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        current_path_changed.consumed_by(self.load_files)
 
     def create_details_pane(self) -> None:
         """Frame showing the files/folders."""
@@ -151,7 +157,6 @@ class DetailsPaneMixIn:
         path = self.current_path / selected_file
 
         if Path(path).is_dir():
-            self.current_path = path
-            self.on_current_path_change()
+            self.set_current_path(path)
         else:
             open_file(path)

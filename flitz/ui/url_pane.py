@@ -4,10 +4,12 @@ import tkinter as tk
 from collections.abc import Callable
 from pathlib import Path
 from tkinter import ttk
+from typing import Any
 
 from PIL import Image, ImageTk
 
 from flitz.config import Config
+from flitz.events import current_path_changed
 
 
 class UrlPaneMixIn:
@@ -15,6 +17,10 @@ class UrlPaneMixIn:
 
     cfg: Config
     go_up: Callable[[], None]
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        current_path_changed.consumed_by(self.refresh)
 
     def create_url_pane(self) -> None:
         """URL bar with an "up" button."""
@@ -51,6 +57,12 @@ class UrlPaneMixIn:
         self.url_bar_label.grid(row=0, column=1, padx=5)
 
         self.url_bar_value = tk.StringVar()
-        self.url_bar_value.set(str(self.cfg.current_path))
         self.url_bar = ttk.Entry(self.url_frame, textvariable=self.url_bar_value)
         self.url_bar.grid(row=0, column=2, columnspan=3, sticky="nsew")
+        self.refresh()
+
+    def refresh(self) -> None:
+        """Refresh the URL bar."""
+        self.url_bar.delete(0, tk.END)
+        self.url_bar.insert(0, str(self.current_path))
+        self.url_bar_value.set(str(self.current_path))
