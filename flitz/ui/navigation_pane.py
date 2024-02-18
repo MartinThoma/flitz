@@ -14,8 +14,8 @@ class NavigationPaneMixIn:
     """The navigation pane."""
 
     cfg: Config
-    current_path: Path
-    set_current_path: Callable[[Path], None]
+    current_path: str
+    set_current_path: Callable[[str], None]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -106,7 +106,7 @@ class NavigationPaneMixIn:
         """Navigate to the specified directory."""
         path_ = Path(path)
         if path_.exists() and path_.is_dir():
-            self.set_current_path(path_)
+            self.set_current_path(path)
         else:
             messagebox.showerror(
                 "Error",

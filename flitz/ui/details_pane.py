@@ -2,14 +2,14 @@
 
 import tkinter as tk
 from collections.abc import Callable
-from datetime import datetime
 from pathlib import Path
 from tkinter import ttk
 from typing import Any
 
 from flitz.config import Config
-from flitz.events import current_path_changed
-from flitz.utils import get_unicode_symbol, is_hidden, open_file
+from flitz.events import current_folder_changed, current_path_changed
+from flitz.file_systems import File, FileSystem
+from flitz.utils import get_unicode_symbol, open_file
 
 
 class DetailsPaneMixIn:
@@ -17,13 +17,21 @@ class DetailsPaneMixIn:
 
     cfg: Config
     NAME_INDEX: int
-    current_path: Path
-    set_current_path: Callable[[Path], None]
+    current_path: str
+    set_current_path: Callable[[str], None]
     update_font_size: Callable[[], None]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         current_path_changed.consumed_by(self.load_files)
+        current_folder_changed.consumed_by(self.load_files)
+
+    @property
+    def fs(self) -> FileSystem:  # just for mypy
+        """Return the current file system."""
+        from flitz.file_systems.basic_fs import BasicFileSystem
+
+        return BasicFileSystem()
 
     def create_details_pane(self) -> None:
         """Frame showing the files/folders."""
@@ -75,8 +83,6 @@ class DetailsPaneMixIn:
         self.tree.bind("<Double-1>", self.on_item_double_click)
         self.tree.bind("<Return>", self.on_item_double_click)
 
-        self.load_files()
-
         # Scrollbar
         self.scrollbar = ttk.Scrollbar(
             self.details_frame,
@@ -111,21 +117,25 @@ class DetailsPaneMixIn:
         self.tree.delete(*self.tree.get_children())
 
         entries = sorted(
-            self.current_path.iterdir(),
-            key=lambda x: (x.is_file(), x.name),
+            self.fs.list_contents(self.current_path),
+            key=lambda x: (isinstance(x, File), x.name),
         )
 
         try:
             first_seen = False
             for entry in entries:
                 # Skip hidden files if not configured to show them
-                if not self.cfg.show_hidden_files and is_hidden(entry):
+                if not self.cfg.show_hidden_files and self.fs.is_hidden(str(entry)):
                     continue
 
-                size = entry.stat().st_size if entry.is_file() else ""
-                type_ = "File" if entry.is_file() else "Folder"
-                date_modified = datetime.fromtimestamp(entry.stat().st_mtime).strftime(
-                    "%Y-%m-%d %H:%M:%S",
+                size = entry.file_size if isinstance(entry, File) else ""
+                type_ = "File" if isinstance(entry, File) else "Folder"
+                date_modified = (
+                    entry.last_modified_at.strftime(
+                        "%Y-%m-%d %H:%M:%S",
+                    )
+                    if isinstance(entry, File)
+                    else ""
                 )
 
                 prefix = get_unicode_symbol(entry)
@@ -154,7 +164,7 @@ class DetailsPaneMixIn:
         i = self.NAME_INDEX
         values = self.tree.item(selected_item, "values")  # type: ignore[call-overload]
         selected_file = values[i]
-        path = self.current_path / selected_file
+        path = Path(self.current_path) / selected_file
 
         if Path(path).is_dir():
             self.set_current_path(path)

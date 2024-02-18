@@ -13,7 +13,7 @@ class ShowProperties:
     """Show the properties of one or more file(s)/folder(s)."""
 
     tree: ttk.Treeview
-    current_path: Path
+    current_path: str
     NAME_INDEX: int
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -27,7 +27,7 @@ class ShowProperties:
         if not isinstance(selected_item, tuple):
 
             selected_file = self.tree.item(selected_item, "values")[self.NAME_INDEX]
-            file_path = self.current_path / selected_file
+            file_path = Path(self.current_path) / selected_file
             try:
                 file_stat = file_path.stat()
                 size = file_stat.st_size if file_path.is_file() else ""
@@ -65,7 +65,7 @@ class ShowProperties:
         for item in selected_item:
             values = self.tree.item(item, "values")
             selected_file = values[self.NAME_INDEX]
-            file_path = self.current_path / selected_file
+            file_path = Path(self.current_path) / selected_file
             if file_path.is_file():
                 nb_files += 1
             else:

@@ -16,7 +16,7 @@ class UrlPaneMixIn:
     """The URL pane."""
 
     cfg: Config
-    current_path: Path
+    current_path: str
     go_up: Callable[[], None]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:

@@ -31,3 +31,6 @@ class Event:
 
 
 current_path_changed = Event("current_path_changed")
+
+# either contents or the folder itself:
+current_folder_changed = Event("current_folder_changed")

@@ -49,7 +49,7 @@ class WindowConfig(BaseModel):
 
     width: int = 1200
     height: int = 800
-    title: str = "{current_path.name}"
+    title: str = "{current_path}"
 
 
 class Config(BaseModel):

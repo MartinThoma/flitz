@@ -1,10 +1,15 @@
 """The Copy-Paste MixIn."""
 
+import logging
 import shutil
 import tkinter as tk
 from pathlib import Path
 from tkinter import ttk
 from typing import Any
+
+from flitz.events import current_folder_changed
+
+logger = logging.getLogger(__name__)
 
 
 class CopyPasteMixIn:
@@ -12,7 +17,7 @@ class CopyPasteMixIn:
 
     tree: ttk.Treeview
     NAME_INDEX: int
-    current_path: Path
+    current_path: str
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -34,10 +39,17 @@ class CopyPasteMixIn:
         if self.clipboard_data:
             # Insert clipboard data as new items in the Treeview
             for values in self.clipboard_data:
-                self.tree.insert("", "end", values=values)
+                current_folder_changed.produce()
                 # Copy the file/directory to the filesystem
-                source_path = values[
-                    self.NAME_INDEX
-                ]  # Assuming the first value is the file/directory path
-                destination_path = self.current_path  # Specify your destination path
+                # Assuming the first value is the file/directory path
+                source_path = Path(values[self.NAME_INDEX]).absolute()
+
+                destination_path = Path(self.current_path).absolute()
+
+                if source_path.is_file() and destination_path.is_dir():
+                    destination_path = destination_path / source_path.name
+
+                if destination_path == source_path:
+                    logger.warning("Cannot copy a file to the same location")
+                    return
                 shutil.copy(source_path, destination_path)

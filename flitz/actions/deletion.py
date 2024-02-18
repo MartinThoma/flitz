@@ -10,7 +10,7 @@ from typing import Any
 class DeletionMixIn:
     """Handle the deletion of one or more file(s)/folder(s)."""
 
-    current_path: Path
+    current_path: str
     tree: ttk.Treeview
     load_files: Callable[[], None]
     NAME_INDEX: int
@@ -33,7 +33,7 @@ class DeletionMixIn:
 
     def delete_item(self, selected_file: str) -> None:
         """Delete the selected file/folder."""
-        file_path = self.current_path / selected_file
+        file_path = Path(self.current_path) / selected_file
         try:
             if file_path.is_file():
                 file_path.unlink()  # Delete file

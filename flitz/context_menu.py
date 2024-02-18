@@ -40,7 +40,8 @@ def create_context_menu(root: tk.Tk, items: list[ContextMenuItem]) -> tk.Menu:
     menu = tk.Menu(root, tearoff=0)
     selection = root.tree.selection()  # type: ignore[attr-defined]
     values = [root.tree.item(item, "values") for item in selection]  # type: ignore[attr-defined, call-overload]
-    selected_files = [root.current_path / value[root.NAME_INDEX] for value in values]  # type: ignore[attr-defined]
+    r = Path(root.current_path)  # type: ignore[attr-defined]
+    selected_files = [r / value[root.NAME_INDEX] for value in values]  # type: ignore[attr-defined]
     for item in items:
         if item.is_active(selected_files):
             menu.add_command(

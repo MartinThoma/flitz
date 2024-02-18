@@ -2,7 +2,6 @@
 
 import logging
 import tkinter as tk
-from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox, ttk
 from tkinter.simpledialog import askstring
@@ -12,7 +11,9 @@ import pkg_resources  # ty
 from .actions import CopyPasteMixIn, DeletionMixIn, RenameMixIn, ShowProperties
 from .config import CONFIG_PATH, Config, create_settings
 from .context_menu import ContextMenuItem, create_context_menu
-from .events import current_path_changed
+from .events import current_folder_changed, current_path_changed
+from .file_systems import File, FileSystem
+from .file_systems.basic_fs import BasicFileSystem
 from .ui import DetailsPaneMixIn, NavigationPaneMixIn, UrlPaneMixIn
 from .utils import get_unicode_symbol, open_file
 
@@ -47,6 +48,7 @@ class FileExplorer(
         self.cfg = Config.load()
         self.geometry(f"{self.cfg.window.width}x{self.cfg.window.height}")
 
+        self.load_file_systems()
         self.load_context_menu_items()
 
         self.configure(background=self.cfg.background_color)
@@ -75,9 +77,7 @@ class FileExplorer(
         img = tk.Image("photo", file=icon_path)
         self.tk.call("wm", "iconphoto", self._w, img)  # type: ignore[attr-defined]
 
-        self.current_path = Path(initial_path).resolve()
-
-        self.title(self.cfg.window.title.format(current_path=self.current_path))
+        self.current_path = str(Path(initial_path).resolve())
 
         self.search_mode = False  # Track if search mode is open
         self.context_menu: tk.Menu | None = None  # Track if context menu is open
@@ -89,6 +89,11 @@ class FileExplorer(
             self.title(title)
 
         current_path_changed.consumed_by(set_title)
+
+        self.current_file_system = "/"
+        self.current_path = str(Path(initial_path).resolve())
+        current_folder_changed.produce()
+        current_path_changed.produce()
 
         # Key bindings
         self.bind(self.cfg.keybindings.font_size_increase, self.increase_font_size)
@@ -110,10 +115,15 @@ class FileExplorer(
         # This is on purpose not configurable
         self.bind("<Control-m>", self.open_settings)
 
+    @property
+    def fs(self) -> FileSystem:
+        """Return the current file system."""
+        return self.file_systems[self.current_file_system]
+
     def toggle_hidden_files(self, _: tk.Event) -> None:
         """Toggle showing/hiding hidden files."""
         self.cfg.show_hidden_files = not self.cfg.show_hidden_files
-        self.load_files()
+        current_folder_changed.produce()
 
     def open_settings(self, _: tk.Event) -> None:
         """Open the settings of flitz."""
@@ -130,6 +140,16 @@ class FileExplorer(
             elif self.search_mode:
                 # Deactivate search mode if active
                 self.exit_search_mode(event)
+
+    def load_file_systems(self) -> None:
+        """Load file systems from entry points."""
+        self.file_systems: dict[str, FileSystem] = {
+            "/": BasicFileSystem(),
+        }
+        entry_point_group = "flitz.file_systems"
+        for entry_point in pkg_resources.iter_entry_points(group=entry_point_group):
+            file_system = entry_point.load()
+            self.file_systems[file_system.name] = file_system
 
     def load_context_menu_items(self) -> None:
         """Register context menu items."""
@@ -180,11 +200,11 @@ class FileExplorer(
         """Create a folder."""
         folder_name = askstring("Create Folder", "Enter folder name:")
         if folder_name:
-            new_folder_path = self.current_path / folder_name
+            new_folder_path = self.fs.get_absolute_path(self.current_path, folder_name)
             try:
-                new_folder_path.mkdir(exist_ok=False)
+                self.fs.create_folder(new_folder_path)
                 # Update the treeview to display the newly created folder
-                self.load_files(new_folder_path)
+                current_folder_changed.produce()
             except OSError as e:
                 messagebox.showerror("Error", f"Failed to create folder: {e}")
 
@@ -192,15 +212,14 @@ class FileExplorer(
         """Create an empty file."""
         file_name = askstring("Create Empty File", "Enter file name:")
         if file_name:
-            new_file_path = self.current_path / file_name
-            if new_file_path.exists():
+            new_file_path = self.fs.get_absolute_path(self.current_path, file_name)
+            if self.fs.does_path_exist(new_file_path):
                 messagebox.showerror("Error", "File already exists.")
                 return
             try:
-                with new_file_path.open("w"):
-                    pass
+                self.fs.create_file(new_file_path, b"")
                 # Update the treeview to display the newly created file
-                self.load_files(new_file_path)
+                current_folder_changed.produce()
             except OSError as e:
                 messagebox.showerror("Error", f"Failed to create file: {e}")
 
@@ -208,7 +227,7 @@ class FileExplorer(
         """Exit the search mode."""
         if self.search_mode:
             # Reload files and clear search mode
-            self.load_files()
+            current_folder_changed.produce()  # a bit of an abuse of the event
             self.url_bar_label.config(text="Location:")
             self.search_mode = False
 
@@ -227,15 +246,16 @@ class FileExplorer(
         path = self.current_path
         self.tree.delete(*self.tree.get_children())  # Clear existing items
 
-        entries = sorted(Path(path).iterdir(), key=lambda x: (x.is_file(), x.name))
+        entries = sorted(
+            self.fs.list_contents(path),
+            key=lambda x: (isinstance(entry, File), x.name),
+        )
 
         for entry in entries:
             if search_term.lower() in entry.name.lower():
-                size = entry.stat().st_size if entry.is_file() else ""
-                type_ = "File" if entry.is_file() else "Folder"
-                date_modified = datetime.fromtimestamp(entry.stat().st_mtime).strftime(
-                    "%Y-%m-%d %H:%M:%S",
-                )
+                size = entry.file_size if isinstance(entry, File) else ""
+                type_ = "File" if isinstance(entry, File) else "Folder"
+                date_modified = entry.last_modified_at.strftime("%Y-%m-%d %H:%M:%S")
                 unicode_symbol = get_unicode_symbol(entry)
 
                 self.tree.insert(
@@ -288,14 +308,14 @@ class FileExplorer(
         self.create_navigation_pane()
         self.create_details_pane()
 
-    def set_current_path(self, current_path: Path) -> None:
+    def set_current_path(self, current_path: str) -> None:
         """Set the current path and update the UI."""
-        self.current_path = current_path.resolve()
+        self.current_path = str(Path(current_path).resolve())
         current_path_changed.produce()
 
     def go_up(self, _: tk.Event | None = None) -> None:
         """Ascend from the current directory."""
-        up_path = self.current_path.parent
+        up_path = self.fs.go_up(str(self.current_path))
 
-        if up_path.exists():
+        if self.fs.does_path_exist(up_path):
             self.set_current_path(up_path)

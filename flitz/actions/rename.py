@@ -14,7 +14,7 @@ class RenameMixIn:
     NAME_INDEX: int
     COLUMNS: int
     tree: ttk.Treeview
-    current_path: Path
+    current_path: str
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -36,8 +36,8 @@ class RenameMixIn:
                         values=(new_name, values[1], values[2], values[3]),
                     )
                     # Perform the actual renaming operation in the file system if needed
-                    old_path = self.current_path / selected_file
-                    new_path = self.current_path / new_name
+                    old_path = Path(self.current_path) / selected_file
+                    new_path = Path(self.current_path) / new_name
 
                     try:
                         old_path.rename(new_path)
