@@ -62,6 +62,8 @@ ignore = [
     "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
     "PLW2901",  # `for` loop variable `...` overwritten by assignment target
 
+    # Project-specific
+    "PTH",  # we work with non-standard paths in a lot of places
 
     # Python version support
     "ANN101",  # Missing type annotation for `self` in method: Python 3.11

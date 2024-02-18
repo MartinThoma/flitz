@@ -16,7 +16,7 @@ class File:
         name: str,
         type: str,  # noqa: A002
         file_size: int,
-        created_at: datetime,
+        created_at: datetime | None,
         last_modified_at: datetime,
     ) -> None:
         self.name = name
@@ -38,9 +38,9 @@ class Folder:
 class FileSystem(ABC):
     """The base class for file systems."""
 
-    def __init__(self, type: str, name: str) -> None:  # noqa: A002
-        self.type = type
+    def __init__(self, name: str) -> None:
         self.name = name
+        # always set the "type"!
 
     @abstractmethod
     def list_contents(self, path: str) -> list[File | Folder]:
@@ -84,3 +84,14 @@ class FileSystem(ABC):
             True if the path is hidden, False otherwise.
         """
         return False
+
+    @abstractmethod
+    def get_file_or_folder(self, path: str) -> File | Folder:
+        """Get a file or folder."""
+        return File(
+            "",
+            "",
+            0,
+            None,
+            datetime(1970, 1, 1, 0, 0, 0, tzinfo=None),  # noqa: DTZ001
+        )

@@ -1,12 +1,12 @@
 """The ShowProperties MixIn."""
 
+import os
 from collections.abc import Iterable
-from datetime import datetime
-from pathlib import Path
 from tkinter import messagebox, ttk
 from typing import Any
 
 from flitz.file_properties_dialog import FilePropertiesDialog
+from flitz.file_systems import File, FileSystem
 
 
 class ShowProperties:
@@ -15,6 +15,13 @@ class ShowProperties:
     tree: ttk.Treeview
     current_path: str
     NAME_INDEX: int
+
+    @property
+    def fs(self) -> FileSystem:  # just for mypy
+        """Return the current file system."""
+        from flitz.file_systems.basic_fs import LocalFileSystem
+
+        return LocalFileSystem("/")
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -27,12 +34,12 @@ class ShowProperties:
         if not isinstance(selected_item, tuple):
 
             selected_file = self.tree.item(selected_item, "values")[self.NAME_INDEX]
-            file_path = Path(self.current_path) / selected_file
+            file_path = os.path.join(self.current_path, selected_file)
+            entry = self.fs.get_file_or_folder(file_path)
             try:
-                file_stat = file_path.stat()
-                size = file_stat.st_size if file_path.is_file() else ""
-                type_ = "File" if file_path.is_file() else "Folder"
-                date_modified = datetime.fromtimestamp(file_stat.st_mtime).strftime(
+                size = entry.file_size if isinstance(entry, File) else ""
+                type_ = "File" if isinstance(entry, File) else "Folder"
+                date_modified = entry.last_modified_at.strftime(
                     "%Y-%m-%d %H:%M:%S",
                 )
 
@@ -65,15 +72,15 @@ class ShowProperties:
         for item in selected_item:
             values = self.tree.item(item, "values")
             selected_file = values[self.NAME_INDEX]
-            file_path = Path(self.current_path) / selected_file
-            if file_path.is_file():
+            file_path = os.path.join(self.current_path, selected_file)
+            entry = self.fs.get_file_or_folder(file_path)
+            if isinstance(entry, File):
                 nb_files += 1
             else:
                 nb_folders += 1
             try:
-                file_stat = file_path.stat()
-                size_sum += file_stat.st_size if file_path.is_file() else 0
-                date_modified = datetime.fromtimestamp(file_stat.st_mtime)
+                size_sum += entry.file_size if isinstance(entry, File) else 0
+                date_modified = entry.last_modified_at
                 if date_modified_min is None:
                     date_modified_min = date_modified
                 else:

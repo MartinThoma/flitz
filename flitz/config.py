@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 CONFIG_PATH = Path.home() / ".flitz.yml"
 
@@ -52,6 +52,15 @@ class WindowConfig(BaseModel):
     title: str = "{current_path}"
 
 
+class FileSystemConfig(BaseModel):
+    """Configuration for a file system."""
+
+    model_config = ConfigDict(extra="allow")
+
+    name: str
+    type: str
+
+
 class Config(BaseModel):
     """
     The configuration base class.
@@ -60,6 +69,7 @@ class Config(BaseModel):
     the user, the defaults will be used.
     """
 
+    file_systems: list[FileSystemConfig] = []
     font: str = "TkDefaultFont"
     font_size: int = 14
     window: WindowConfig = WindowConfig()

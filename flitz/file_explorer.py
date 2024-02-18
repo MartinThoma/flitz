@@ -13,7 +13,8 @@ from .config import CONFIG_PATH, Config, create_settings
 from .context_menu import ContextMenuItem, create_context_menu
 from .events import current_folder_changed, current_path_changed
 from .file_systems import File, FileSystem
-from .file_systems.basic_fs import BasicFileSystem
+from .file_systems.basic_fs import LocalFileSystem
+from .file_systems.ftp_fs import FTPFileSystem
 from .ui import DetailsPaneMixIn, NavigationPaneMixIn, UrlPaneMixIn
 from .utils import get_unicode_symbol, open_file
 
@@ -143,13 +144,25 @@ class FileExplorer(
 
     def load_file_systems(self) -> None:
         """Load file systems from entry points."""
-        self.file_systems: dict[str, FileSystem] = {
-            "/": BasicFileSystem(),
+        # Those are the known types of file systems
+        self.file_system_types: dict[str, type[FileSystem]] = {
+            "local": LocalFileSystem,
+            "FTP": FTPFileSystem,
         }
         entry_point_group = "flitz.file_systems"
         for entry_point in pkg_resources.iter_entry_points(group=entry_point_group):
             file_system = entry_point.load()
-            self.file_systems[file_system.name] = file_system
+            self.file_system_types[file_system.name] = file_system
+
+        # Those are the actual "mounted" file systems
+        self.file_systems: dict[str, FileSystem] = {
+            "/": LocalFileSystem("/"),
+        }
+        for fs_cfg in self.cfg.file_systems:
+            init_parms = fs_cfg.dict()
+            init_parms.pop("type")
+            fs = self.file_system_types[fs_cfg.type](**init_parms)
+            self.file_systems[fs_cfg.name] = fs
 
     def load_context_menu_items(self) -> None:
         """Register context menu items."""

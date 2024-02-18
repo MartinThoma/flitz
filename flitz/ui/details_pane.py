@@ -29,9 +29,9 @@ class DetailsPaneMixIn:
     @property
     def fs(self) -> FileSystem:  # just for mypy
         """Return the current file system."""
-        from flitz.file_systems.basic_fs import BasicFileSystem
+        from flitz.file_systems.basic_fs import LocalFileSystem
 
-        return BasicFileSystem()
+        return LocalFileSystem("/")
 
     def create_details_pane(self) -> None:
         """Frame showing the files/folders."""

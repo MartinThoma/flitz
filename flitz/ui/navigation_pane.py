@@ -8,6 +8,7 @@ from typing import Any
 
 from flitz.config import Config
 from flitz.events import current_path_changed
+from flitz.file_systems import FileSystem
 
 
 class NavigationPaneMixIn:
@@ -16,6 +17,7 @@ class NavigationPaneMixIn:
     cfg: Config
     current_path: str
     set_current_path: Callable[[str], None]
+    file_systems: dict[str, FileSystem]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -86,6 +88,23 @@ class NavigationPaneMixIn:
             if path == self.current_path:
                 self.bookmarks_tree.selection_set(item)
 
+        # Add file systems
+        self.bookmarks_tree.insert(
+            "",
+            "end",
+            text="File systems",
+            open=True,
+            tags=("heading",),
+        )
+        for fs_name in self.file_systems:
+            self.bookmarks_tree.insert(
+                "",
+                "end",
+                text=f"FS:{fs_name}",
+                open=True,
+                tags=("heading",),
+            )
+
         self.bookmarks_tree.tag_configure("heading", font=("Ubuntu Bold", 14, "bold"))
 
         # Bind double-click event to navigate to the selected bookmark
@@ -99,8 +118,14 @@ class NavigationPaneMixIn:
         selected_item = self.bookmarks_tree.focus()
         if selected_item:
             item_text = self.bookmarks_tree.item(selected_item, "text")
-            path = self.bookmarks[item_text]
-            self.navigate_to(path)
+            if item_text.startswith("FS:"):
+                fs_text = item_text[3:]
+                self.current_file_system = fs_text
+                self.current_path = "/"
+                current_path_changed.produce()
+            else:
+                path = self.bookmarks[item_text]
+                self.navigate_to(path)
 
     def navigate_to(self, path: str) -> None:
         """Navigate to the specified directory."""
