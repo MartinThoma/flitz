@@ -125,7 +125,9 @@ class DetailsPaneMixIn:
             first_seen = False
             for entry in entries:
                 # Skip hidden files if not configured to show them
-                if not self.cfg.show_hidden_files and self.fs.is_hidden(str(entry)):
+                if not self.cfg.show_hidden_files and self.fs.is_hidden(
+                    str(entry.path),
+                ):
                     continue
 
                 size = entry.file_size if isinstance(entry, File) else ""
@@ -134,7 +136,7 @@ class DetailsPaneMixIn:
                     entry.last_modified_at.strftime(
                         "%Y-%m-%d %H:%M:%S",
                     )
-                    if isinstance(entry, File)
+                    if isinstance(entry, File) and entry.last_modified_at
                     else ""
                 )
 

@@ -14,16 +14,18 @@ class File:
     def __init__(  # noqa: PLR0913
         self,
         name: str,
+        path: str,
         type: str,  # noqa: A002
-        file_size: int,
+        file_size: int | None,
         created_at: datetime | None,
-        last_modified_at: datetime,
+        last_modified_at: datetime | None,
     ) -> None:
         self.name = name
         self.type = type
         self.file_size = file_size
         self.created_at = created_at
         self.last_modified_at = last_modified_at
+        self.path = path
 
 
 class Folder:
@@ -43,7 +45,7 @@ class FileSystem(ABC):
         # always set the "type"!
 
     @abstractmethod
-    def list_contents(self, path: str) -> list[File | Folder]:
+    def list_contents(self, path: str, recursive: bool = False) -> list[File | Folder]:
         """List the contents of a folder."""
         return []
 
@@ -89,6 +91,7 @@ class FileSystem(ABC):
     def get_file_or_folder(self, path: str) -> File | Folder:
         """Get a file or folder."""
         return File(
+            "",
             "",
             "",
             0,

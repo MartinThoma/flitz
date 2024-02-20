@@ -16,31 +16,50 @@ class LocalFileSystem(FileSystem):
         super().__init__(name=name)
         self.type = "local"
 
-    def list_contents(self, path: str) -> list[File | Folder]:
+    def list_contents(self, path: str, recursive: bool = False) -> list[File | Folder]:
         """List the contents of a folder."""
         contents: list[File | Folder] = []
         p = Path(path)
-        for item in p.iterdir():  # Use p.iterdir() to iterate over contents
-            if item.is_dir():  # Use item.is_dir() to check if it's a directory
-                folder = Folder(
-                    name=item.name,
-                    path=str(item),
-                    last_modified_at=datetime.fromtimestamp(item.stat().st_mtime),
-                )  # Use item.name and str(item) for name and path
-                contents.append(folder)
-            else:
+        if recursive:
+            for entry in p.rglob("*"):
+                self._handle_entry_in_list_contents(entry, contents)
+        else:
+            for entry in p.iterdir():
+                self._handle_entry_in_list_contents(entry, contents)
+        return contents
+
+    def _handle_entry_in_list_contents(
+        self,
+        item: Path,
+        contents: list[File | Folder],
+    ) -> None:
+        item = item.resolve()
+        if item.is_dir():
+            folder = Folder(
+                name=item.name,
+                path=str(item),
+                last_modified_at=datetime.fromtimestamp(item.stat().st_mtime),
+            )
+            contents.append(folder)
+        else:
+            try:
                 file_stat = item.stat()
                 created_at = datetime.fromtimestamp(file_stat.st_ctime)
                 last_modified_at = datetime.fromtimestamp(file_stat.st_mtime)
-                file = File(
-                    name=item.name,
-                    type=item.suffix,  # Use item.suffix to get file extension
-                    file_size=file_stat.st_size,
-                    created_at=created_at,
-                    last_modified_at=last_modified_at,
-                )
-                contents.append(file)
-        return contents
+                file_size = file_stat.st_size
+            except FileNotFoundError:
+                created_at = None
+                last_modified_at = None
+                file_size = None
+            file = File(
+                name=item.name,
+                path=str(item),
+                type=item.suffix,  # Get file extension
+                file_size=file_size,
+                created_at=created_at,
+                last_modified_at=last_modified_at,
+            )
+            contents.append(file)
 
     def get_absolute_path(self, path: str, name: str) -> str:
         """Join the path and name to get the absolute path."""
@@ -96,6 +115,7 @@ class LocalFileSystem(FileSystem):
         last_modified_at = datetime.fromtimestamp(file_stat.st_mtime)
         return File(
             name=p.name,
+            path=str(p),
             type=p.suffix,
             file_size=file_stat.st_size,
             created_at=created_at,

@@ -61,6 +61,7 @@ ignore = [
     "E731", # Do not assign a `lambda` expression, use a `def`
     "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
     "PLW2901",  # `for` loop variable `...` overwritten by assignment target
+    "FBT002",  # Boolean default positional argument in function definition
 
     # Project-specific
     "PTH",  # we work with non-standard paths in a lot of places

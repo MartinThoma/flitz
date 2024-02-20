@@ -79,7 +79,11 @@ class ShowProperties:
             else:
                 nb_folders += 1
             try:
-                size_sum += entry.file_size if isinstance(entry, File) else 0
+                size_sum += (
+                    entry.file_size
+                    if isinstance(entry, File) and entry.file_size
+                    else 0
+                )
                 date_modified = entry.last_modified_at
                 if date_modified_min is None:
                     date_modified_min = date_modified

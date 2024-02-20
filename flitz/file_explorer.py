@@ -123,6 +123,7 @@ class FileExplorer(
 
     def toggle_hidden_files(self, _: tk.Event) -> None:
         """Toggle showing/hiding hidden files."""
+        logger.info("Toggled hidden files visibility")
         self.cfg.show_hidden_files = not self.cfg.show_hidden_files
         current_folder_changed.produce()
 
@@ -260,15 +261,19 @@ class FileExplorer(
         self.tree.delete(*self.tree.get_children())  # Clear existing items
 
         entries = sorted(
-            self.fs.list_contents(path),
-            key=lambda x: (isinstance(entry, File), x.name),
+            self.fs.list_contents(path, recursive=True),
+            key=lambda x: (isinstance(x, File), x.name),
         )
 
         for entry in entries:
             if search_term.lower() in entry.name.lower():
                 size = entry.file_size if isinstance(entry, File) else ""
                 type_ = "File" if isinstance(entry, File) else "Folder"
-                date_modified = entry.last_modified_at.strftime("%Y-%m-%d %H:%M:%S")
+                date_modified = (
+                    entry.last_modified_at.strftime("%Y-%m-%d %H:%M:%S")
+                    if entry.last_modified_at
+                    else ""
+                )
                 unicode_symbol = get_unicode_symbol(entry)
 
                 self.tree.insert(

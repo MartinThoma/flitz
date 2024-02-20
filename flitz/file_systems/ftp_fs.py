@@ -24,7 +24,7 @@ class FTPFileSystem(FileSystem):
         self.ftp.login()
         self._cache: dict[str, File | Folder] = {}  # maps path to contents
 
-    def list_contents(self, path: str) -> list[File | Folder]:
+    def list_contents(self, path: str, recursive: bool = False) -> list[File | Folder]:
         """List the contents of a folder."""
         contents = []
 
@@ -40,6 +40,7 @@ class FTPFileSystem(FileSystem):
                 file_size = int(properties.get("size", 0))
                 entry: File | Folder = File(
                     name,
+                    full_path,
                     "file",
                     file_size,
                     None,
@@ -51,6 +52,8 @@ class FTPFileSystem(FileSystem):
                     self.get_absolute_path(path, name),
                     last_modified_at,
                 )
+                if recursive:
+                    self.list_contents(entry.path, recursive=True)
             contents.append(entry)
             self._cache[full_path] = entry
         return contents
