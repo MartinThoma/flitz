@@ -1,12 +1,11 @@
 """The FileExplorer class."""
 
+import importlib.metadata
 import logging
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
 from tkinter.simpledialog import askstring
-
-import pkg_resources  # ty
 
 from .actions import CopyPasteMixIn, DeletionMixIn, RenameMixIn, ShowProperties
 from .config import CONFIG_PATH, Config, create_settings
@@ -151,7 +150,9 @@ class FileExplorer(
             "FTP": FTPFileSystem,
         }
         entry_point_group = "flitz.file_systems"
-        for entry_point in pkg_resources.iter_entry_points(group=entry_point_group):
+        for entry_point in importlib.metadata.entry_points().select(
+            group=entry_point_group,
+        ):
             file_system = entry_point.load()
             self.file_system_types[file_system.name] = file_system
 
@@ -195,7 +196,9 @@ class FileExplorer(
         ]
 
         entry_point_group = "flitz"
-        for entry_point in pkg_resources.iter_entry_points(group=entry_point_group):
+        for entry_point in importlib.metadata.entry_points().select(
+            group=entry_point_group,
+        ):
             context_menu_item = entry_point.load()
             self.registered_context_menu_items.append(context_menu_item)
 

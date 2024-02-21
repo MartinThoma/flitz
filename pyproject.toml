@@ -22,7 +22,6 @@ dependencies = [
   "pillow",
   "pydantic",
   "pyyaml",
-  "setuptools",
 ]
 [project.optional-dependencies]
 dev = [
