@@ -22,6 +22,26 @@ class Frontend(ABC):
     """The base class for the frontend."""
 
     @abstractmethod
+    def make_textinput_message(
+        self,
+        title: str,
+        message: str,
+    ) -> str | None:
+        """Show a message with an input field."""
+
+    @abstractmethod
+    def make_ok_cancel_message(
+        self,
+        title: str,
+        message: str,
+    ) -> bool:
+        """Show a message with an OK and a Cancel button."""
+
+    @abstractmethod
+    def make_error_message(self, title: str, message: str) -> None:
+        """Show an error message."""
+
+    @abstractmethod
     def make_context_menu(
         self,
         items: list[ContextMenuItem],

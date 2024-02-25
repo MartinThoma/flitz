@@ -2,11 +2,12 @@
 
 import os
 from collections.abc import Iterable
-from tkinter import messagebox, ttk
+from tkinter import ttk
 from typing import Any
 
 from flitz.file_properties_dialog import FilePropertiesDialog
 from flitz.file_systems import File, FileSystem
+from flitz.frontends.base import Frontend
 
 
 class ShowProperties:
@@ -15,6 +16,7 @@ class ShowProperties:
     tree: ttk.Treeview
     current_path: str
     NAME_INDEX: int
+    frontend: Frontend
 
     @property
     def fs(self) -> FileSystem:  # just for mypy
@@ -55,7 +57,10 @@ class ShowProperties:
                 properties_dialog.wait_window()
 
             except OSError as e:
-                messagebox.showerror("Error", f"Failed to retrieve properties: {e}")
+                self.frontend.make_error_message(
+                    "Error",
+                    f"Failed to retrieve properties: {e}",
+                )
         else:
             self._show_properties_file_selection_list(selected_item)
 
@@ -96,7 +101,10 @@ class ShowProperties:
                     date_modified_max = max(date_modified, date_modified_max)
 
             except OSError as e:
-                messagebox.showerror("Error", f"Failed to retrieve properties: {e}")
+                self.frontend.make_error_message(
+                    "Error",
+                    f"Failed to retrieve properties: {e}",
+                )
         # Create and display the properties dialog form
         properties_dialog = FilePropertiesDialog(
             file_name="",

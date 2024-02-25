@@ -3,12 +3,13 @@
 import tkinter as tk
 from collections.abc import Callable
 from pathlib import Path
-from tkinter import messagebox, ttk
+from tkinter import ttk
 from typing import Any
 
 from flitz.config import Config
 from flitz.events import current_path_changed
 from flitz.file_systems import FileSystem
+from flitz.frontends.base import Frontend
 
 
 class NavigationPaneMixIn:
@@ -18,6 +19,7 @@ class NavigationPaneMixIn:
     current_path: str
     set_current_path: Callable[[str], None]
     file_systems: dict[str, FileSystem]
+    frontend: Frontend
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -133,7 +135,7 @@ class NavigationPaneMixIn:
         if path_.exists() and path_.is_dir():
             self.set_current_path(path)
         else:
-            messagebox.showerror(
+            self.frontend.make_error_message(
                 "Error",
                 f"The path {path} does not exist or is not a directory.",
             )

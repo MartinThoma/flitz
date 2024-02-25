@@ -3,8 +3,10 @@
 import tkinter as tk
 from collections.abc import Callable
 from pathlib import Path
-from tkinter import messagebox, ttk
+from tkinter import ttk
 from typing import Any
+
+from flitz.frontends.base import Frontend
 
 
 class DeletionMixIn:
@@ -14,6 +16,7 @@ class DeletionMixIn:
     tree: ttk.Treeview
     load_files: Callable[[], None]
     NAME_INDEX: int
+    frontend: Frontend
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -24,7 +27,7 @@ class DeletionMixIn:
         if selected_item:
             values = self.tree.item(selected_item, "values")  # type: ignore[call-overload]
             selected_file = values[self.NAME_INDEX]
-            confirmation = messagebox.askokcancel(
+            confirmation = self.frontend.make_ok_cancel_message(
                 "Confirm Deletion",
                 f"Are you sure you want to delete '{selected_file}'?",
             )
@@ -41,4 +44,7 @@ class DeletionMixIn:
                 file_path.rmdir()  # Delete directory
             self.load_files()  # Refresh the Treeview after deletion
         except OSError as e:
-            messagebox.showerror("Error", f"Failed to delete {file_path}: {e}")
+            self.frontend.make_error_message(
+                "Error",
+                f"Failed to delete {file_path}: {e}",
+            )

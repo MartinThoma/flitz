@@ -2,10 +2,10 @@
 
 import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox, ttk
+from tkinter import ttk
 from typing import Any
 
-from flitz.ui_utils import ask_for_new_name
+from flitz.frontends.base import Frontend
 
 
 class RenameMixIn:
@@ -15,6 +15,7 @@ class RenameMixIn:
     COLUMNS: int
     tree: ttk.Treeview
     current_path: str
+    frontend: Frontend
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -28,7 +29,10 @@ class RenameMixIn:
                 selected_file = values[self.NAME_INDEX]
                 # Implement the renaming logic using the selected_file
                 # You may use an Entry widget or a dialog to get the new name
-                new_name = ask_for_new_name(selected_file)
+                new_name = self.frontend.make_textinput_message(
+                    "Rename",
+                    f"Enter new name for {selected_file}:",
+                )
                 if new_name:
                     # Update the treeview and perform the renaming
                     self.tree.item(
@@ -55,7 +59,7 @@ class RenameMixIn:
                         )
                     except OSError as e:
                         # Handle errors, for example, show an error message
-                        messagebox.showerror(
+                        self.frontend.make_error_message(
                             "Error",
                             f"Error renaming {selected_file}: {e}",
                         )

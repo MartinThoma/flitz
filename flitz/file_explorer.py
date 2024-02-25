@@ -4,7 +4,7 @@ import importlib.metadata
 import logging
 import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox, ttk
+from tkinter import ttk
 from tkinter.simpledialog import askstring
 from typing import TYPE_CHECKING
 
@@ -233,7 +233,10 @@ class FileExplorer(
                 # Update the treeview to display the newly created folder
                 current_folder_changed.produce()
             except OSError as e:
-                messagebox.showerror("Error", f"Failed to create folder: {e}")
+                self.frontend.make_error_message(
+                    "Error",
+                    f"Failed to create folder: {e}",
+                )
 
     def create_empty_file(self) -> None:
         """Create an empty file."""
@@ -241,14 +244,14 @@ class FileExplorer(
         if file_name:
             new_file_path = self.fs.get_absolute_path(self.current_path, file_name)
             if self.fs.does_path_exist(new_file_path):
-                messagebox.showerror("Error", "File already exists.")
+                self.frontend.make_error_message("Error", "File already exists.")
                 return
             try:
                 self.fs.create_file(new_file_path, b"")
                 # Update the treeview to display the newly created file
                 current_folder_changed.produce()
             except OSError as e:
-                messagebox.showerror("Error", f"Failed to create file: {e}")
+                self.frontend.make_error_message("Error", f"Failed to create file: {e}")
 
     def exit_search_mode(self, _: tk.Event) -> None:
         """Exit the search mode."""
