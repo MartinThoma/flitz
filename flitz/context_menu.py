@@ -1,6 +1,5 @@
 """Handle the right-click context menu."""
 
-import tkinter as tk
 from collections.abc import Callable
 from pathlib import Path
 
@@ -27,25 +26,3 @@ class ContextMenuItem:
         self.label = label
         self.action = action
         self.is_active = is_active
-
-
-def create_context_menu(root: tk.Tk, items: list[ContextMenuItem]) -> tk.Menu:
-    """
-    Create the actual context menu for the file manager.
-
-    Args:
-        root: The file manager
-        items: The list of elements in the context menu
-    """
-    menu = tk.Menu(root, tearoff=0)
-    selection = root.tree.selection()  # type: ignore[attr-defined]
-    values = [root.tree.item(item, "values") for item in selection]  # type: ignore[attr-defined, call-overload]
-    r = Path(root.current_path)  # type: ignore[attr-defined]
-    selected_files = [r / value[root.NAME_INDEX] for value in values]  # type: ignore[attr-defined]
-    for item in items:
-        if item.is_active(selected_files):
-            menu.add_command(
-                label=item.label,
-                command=lambda item=item: item.action(selected_files),  # type: ignore[misc]
-            )
-    return menu

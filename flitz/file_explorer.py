@@ -6,17 +6,21 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
 from tkinter.simpledialog import askstring
+from typing import TYPE_CHECKING
 
 from .actions import CopyPasteMixIn, DeletionMixIn, RenameMixIn, ShowProperties
 from .config import CONFIG_PATH, Config, create_settings
-from .context_menu import ContextMenuItem, create_context_menu
+from .context_menu import ContextMenuItem
 from .events import current_folder_changed, current_path_changed
 from .file_systems import File, FileSystem
 from .file_systems.basic_fs import LocalFileSystem
 from .file_systems.ftp_fs import FTPFileSystem
+from .frontends.tkinter_fe import TkFrontend
 from .ui import DetailsPaneMixIn, NavigationPaneMixIn, UrlPaneMixIn
 from .utils import get_unicode_symbol, open_file
 
+if TYPE_CHECKING:
+    from .frontends.base import ContextMenuWidget, Frontend
 logger = logging.getLogger(__name__)
 
 MIN_FONT_SIZE = 4
@@ -46,6 +50,7 @@ class FileExplorer(
         super().__init__()
 
         self.cfg = Config.load()
+        self.frontend: Frontend = TkFrontend(self)
         self.geometry(f"{self.cfg.window.width}x{self.cfg.window.height}")
 
         self.load_file_systems()
@@ -80,7 +85,9 @@ class FileExplorer(
         self.current_path = str(Path(initial_path).resolve())
 
         self.search_mode = False  # Track if search mode is open
-        self.context_menu: tk.Menu | None = None  # Track if context menu is open
+        self.context_menu: ContextMenuWidget | None = (
+            None  # Track if context menu is open
+        )
 
         self.create_widgets()
 
@@ -136,8 +143,7 @@ class FileExplorer(
         """Close the context menu if open or exit search mode."""
         if hasattr(self, "context_menu"):
             if self.context_menu:
-                # Close context menu if open
-                self.context_menu.destroy()
+                self.context_menu.close()
             elif self.search_mode:
                 # Deactivate search mode if active
                 self.exit_search_mode(event)
@@ -205,11 +211,15 @@ class FileExplorer(
     def show_context_menu(self, event: tk.Event) -> None:
         """Display the context menu."""
         if hasattr(self, "context_menu") and self.context_menu:
-            self.context_menu.destroy()
+            self.context_menu.close()
         item_registry = {item.name: item for item in self.registered_context_menu_items}
-        self.context_menu = create_context_menu(
-            self,
+        selection = self.tree.selection()  # type: ignore[attr-defined]
+        values = [self.tree.item(item, "values") for item in selection]  # type: ignore[attr-defined, call-overload]
+        r = Path(self.current_path)  # type: ignore[attr-defined]
+        selected_files: list[Path] = [r / value[self.NAME_INDEX] for value in values]  # type: ignore[attr-defined]
+        self.context_menu = self.frontend.make_context_menu(
             [item_registry[item] for item in self.cfg.context_menu],
+            selected_files,
         )
         self.context_menu.post(event.x_root, event.y_root)
 
