@@ -22,6 +22,15 @@ class Frontend(ABC):
     """The base class for the frontend."""
 
     @abstractmethod
+    def update_font_size(
+        self,
+        font: str,
+        font_size: int,
+        background_color: str,
+    ) -> None:
+        """Update the font size of the frontend."""
+
+    @abstractmethod
     def make_textinput_message(
         self,
         title: str,

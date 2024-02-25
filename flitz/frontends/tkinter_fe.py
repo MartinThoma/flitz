@@ -2,8 +2,9 @@
 
 import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox, simpledialog
+from tkinter import messagebox, simpledialog, ttk
 
+from flitz.config import Config
 from flitz.context_menu import ContextMenuItem
 from flitz.frontends.base import ContextMenuWidget, Frontend
 
@@ -26,8 +27,47 @@ class ContextMenuWidgetTk(ContextMenuWidget):
 class TkFrontend(Frontend):
     """The frontend using Tkinter."""
 
-    def __init__(self, root: tk.Tk) -> None:
+    def __init__(self, root: tk.Tk, cfg: Config) -> None:
         self.root = root
+
+        self.root.style = ttk.Style()  # type: ignore[attr-defined]
+        self.root.style.theme_use("clam")  # type: ignore[attr-defined]  # necessary to get the selection highlight
+        self.root.style.configure(  # type: ignore[attr-defined]
+            "Treeview.Heading",
+            font=(cfg.font, cfg.font_size),
+        )
+        self.root.style.map(  # type: ignore[attr-defined]
+            "Treeview",
+            foreground=[
+                ("selected", cfg.selection.text_color),
+                (None, cfg.text_color),
+            ],
+            background=[
+                # Adding `(None, self.cfg.background_color)` here makes the
+                # selection not work anymore
+                ("selected", cfg.selection.background_color),
+            ],
+            fieldbackground=cfg.background_color,
+        )
+
+    def update_font_size(
+        self,
+        font: str,
+        font_size: int,
+        background_color: str,
+    ) -> None:
+        """Update the font size of the frontend."""
+        self.root.style.configure(  # type: ignore[attr-defined]
+            "Treeview",
+            rowheight=int(font_size * 2.5),
+            font=[font, font_size],
+            background=background_color,
+        )
+        self.root.style.configure(  # type: ignore[attr-defined]
+            "Treeview.Heading",
+            rowheight=int(font_size * 2.5),
+            font=(font, font_size),
+        )
 
     def make_textinput_message(self, title: str, message: str) -> str | None:
         """Show a message with an input field."""

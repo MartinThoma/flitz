@@ -4,7 +4,6 @@ import importlib.metadata
 import logging
 import tkinter as tk
 from pathlib import Path
-from tkinter import ttk
 from tkinter.simpledialog import askstring
 from typing import TYPE_CHECKING
 
@@ -50,32 +49,13 @@ class FileExplorer(
         super().__init__()
 
         self.cfg = Config.load()
-        self.frontend: Frontend = TkFrontend(self)
+        self.frontend: Frontend = TkFrontend(self, self.cfg)
         self.geometry(f"{self.cfg.window.width}x{self.cfg.window.height}")
 
         self.load_file_systems()
         self.load_context_menu_items()
 
         self.configure(background=self.cfg.background_color)
-        self.style = ttk.Style()
-        self.style.theme_use("clam")  # necessary to get the selection highlight
-        self.style.configure(
-            "Treeview.Heading",
-            font=(self.cfg.font, self.cfg.font_size),
-        )
-        self.style.map(
-            "Treeview",
-            foreground=[
-                ("selected", self.cfg.selection.text_color),
-                (None, self.cfg.text_color),
-            ],
-            background=[
-                # Adding `(None, self.cfg.background_color)` here makes the
-                # selection not work anymore
-                ("selected", self.cfg.selection.background_color),
-            ],
-            fieldbackground=self.cfg.background_color,
-        )
 
         # Set window icon (you need to provide a suitable icon file)
         icon_path = str(Path(__file__).resolve().parent / "icon.gif")
@@ -318,16 +298,10 @@ class FileExplorer(
         """
         font = (self.cfg.font, self.cfg.font_size)
         self.url_bar.config(font=font)
-        self.style.configure(
-            "Treeview",
-            rowheight=int(self.cfg.font_size * 2.5),
-            font=[self.cfg.font, self.cfg.font_size],
-            background=self.cfg.background_color,
-        )
-        self.style.configure(
-            "Treeview.Heading",
-            rowheight=int(self.cfg.font_size * 2.5),
-            font=(self.cfg.font, self.cfg.font_size),
+        self.frontend.update_font_size(
+            self.cfg.font,
+            self.cfg.font_size,
+            self.cfg.background_color,
         )
 
     def create_widgets(self) -> None:
