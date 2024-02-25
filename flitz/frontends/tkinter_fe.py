@@ -30,6 +30,8 @@ class TkFrontend(Frontend):
     def __init__(self, root: tk.Tk, cfg: Config) -> None:
         self.root = root
 
+        self.root.configure(background=cfg.background_color)
+
         self.root.style = ttk.Style()  # type: ignore[attr-defined]
         self.root.style.theme_use("clam")  # type: ignore[attr-defined]  # necessary to get the selection highlight
         self.root.style.configure(  # type: ignore[attr-defined]
@@ -49,6 +51,12 @@ class TkFrontend(Frontend):
             ],
             fieldbackground=cfg.background_color,
         )
+
+    def set_app_icon(self, icon_path: Path) -> None:
+        """Set the application icon."""
+        # Set window icon (you need to provide a suitable icon file)
+        img = tk.Image("photo", file=str(icon_path))
+        self.root.tk.call("wm", "iconphoto", self.root._w, img)  # type: ignore[attr-defined]  # noqa: SLF001
 
     def update_font_size(
         self,

@@ -55,12 +55,8 @@ class FileExplorer(
         self.load_file_systems()
         self.load_context_menu_items()
 
-        self.configure(background=self.cfg.background_color)
-
-        # Set window icon (you need to provide a suitable icon file)
-        icon_path = str(Path(__file__).resolve().parent / "icon.gif")
-        img = tk.Image("photo", file=icon_path)
-        self.tk.call("wm", "iconphoto", self._w, img)  # type: ignore[attr-defined]
+        icon_path = Path(__file__).resolve().parent / "icon.gif"
+        self.frontend.set_app_icon(icon_path)
 
         self.current_path = str(Path(initial_path).resolve())
 

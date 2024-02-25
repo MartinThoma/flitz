@@ -22,6 +22,10 @@ class Frontend(ABC):
     """The base class for the frontend."""
 
     @abstractmethod
+    def set_app_icon(self, icon_path: Path) -> None:
+        """Set the application icon."""
+
+    @abstractmethod
     def update_font_size(
         self,
         font: str,
