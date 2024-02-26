@@ -14,6 +14,7 @@ from .events import current_folder_changed, current_path_changed
 from .file_systems import File, FileSystem
 from .file_systems.basic_fs import LocalFileSystem
 from .file_systems.ftp_fs import FTPFileSystem
+from .frontends.base import FeEvent
 from .frontends.tkinter_fe import TkFrontend
 from .ui import DetailsPaneMixIn, NavigationPaneMixIn, UrlPaneMixIn
 from .utils import get_unicode_symbol, open_file
@@ -89,7 +90,7 @@ class FileExplorer(
         )
         self.frontend.bind_keyboard_shortcut(
             self.cfg.keybindings.rename_item,
-            self.rename_item,
+            self.rename_item,  # type: ignore[arg-type]
         )
         self.frontend.bind_keyboard_shortcut(
             self.cfg.keybindings.search,
@@ -106,7 +107,7 @@ class FileExplorer(
         )
         self.frontend.bind_keyboard_shortcut(
             self.cfg.keybindings.delete,
-            self.confirm_delete_item,
+            self.confirm_delete_item,  # type: ignore[arg-type]
         )
         self.frontend.bind_keyboard_shortcut(
             self.cfg.keybindings.create_folder,
@@ -114,11 +115,11 @@ class FileExplorer(
         )
         self.frontend.bind_keyboard_shortcut(
             self.cfg.keybindings.copy_selection,
-            self.copy_selection,
+            self.copy_selection,  # type: ignore[arg-type]
         )
         self.frontend.bind_keyboard_shortcut(
             self.cfg.keybindings.paste,
-            self.paste_selection,
+            self.paste_selection,  # type: ignore[arg-type]
         )
         self.frontend.bind_keyboard_shortcut(
             self.cfg.keybindings.toggle_hidden_file_visibility,
@@ -133,19 +134,19 @@ class FileExplorer(
         """Return the current file system."""
         return self.file_systems[self.current_file_system]
 
-    def toggle_hidden_files(self, _: tk.Event) -> None:
+    def toggle_hidden_files(self, _: FeEvent) -> None:
         """Toggle showing/hiding hidden files."""
         logger.info("Toggled hidden files visibility")
         self.cfg.show_hidden_files = not self.cfg.show_hidden_files
         current_folder_changed.produce()
 
-    def open_settings(self, _: tk.Event) -> None:
+    def open_settings(self, _: FeEvent) -> None:
         """Open the settings of flitz."""
         if not CONFIG_PATH.exists():
             create_settings()
         open_file(str(CONFIG_PATH))
 
-    def handle_escape_key(self, event: tk.Event) -> None:
+    def handle_escape_key(self, event: FeEvent) -> None:
         """Close the context menu if open or exit search mode."""
         if hasattr(self, "context_menu"):
             if self.context_menu:
@@ -214,7 +215,7 @@ class FileExplorer(
             context_menu_item = entry_point.load()
             self.registered_context_menu_items.append(context_menu_item)
 
-    def show_context_menu(self, event: tk.Event) -> None:
+    def show_context_menu(self, event: FeEvent) -> None:
         """Display the context menu."""
         if hasattr(self, "context_menu") and self.context_menu:
             self.context_menu.close()
@@ -227,9 +228,9 @@ class FileExplorer(
             [item_registry[item] for item in self.cfg.context_menu],
             selected_files,
         )
-        self.context_menu.post(event.x_root, event.y_root)
+        self.context_menu.post(event.mouse_x, event.mouse_y)
 
-    def create_folder(self, _: tk.Event | None = None) -> None:
+    def create_folder(self, _: FeEvent | None = None) -> None:
         """Create a folder."""
         folder_name = askstring("Create Folder", "Enter folder name:")
         if folder_name:
@@ -259,7 +260,7 @@ class FileExplorer(
             except OSError as e:
                 self.frontend.make_error_message("Error", f"Failed to create file: {e}")
 
-    def exit_search_mode(self, _: tk.Event) -> None:
+    def exit_search_mode(self, _: FeEvent) -> None:
         """Exit the search mode."""
         if self.search_mode:
             # Reload files and clear search mode
@@ -267,7 +268,7 @@ class FileExplorer(
             self.url_bar_label.config(text="Location:")
             self.search_mode = False
 
-    def handle_search(self, _: tk.Event) -> None:
+    def handle_search(self, _: FeEvent) -> None:
         """Handle the search functionality."""
         # Open dialog box to input search term
         search_term = askstring("Search", "Enter search term:")
@@ -304,13 +305,13 @@ class FileExplorer(
                     values=(unicode_symbol, entry.name, size, type_, date_modified),
                 )
 
-    def increase_font_size(self, _: tk.Event) -> None:
+    def increase_font_size(self, _: FeEvent) -> None:
         """Increase the font size by one, up to MAX_FONT_SIZE."""
         if self.cfg.font_size < MAX_FONT_SIZE:
             self.cfg.font_size += 1
             self.update_font_size()
 
-    def decrease_font_size(self, _: tk.Event) -> None:
+    def decrease_font_size(self, _: FeEvent) -> None:
         """Decrease the font size by one, down to MIN_FONT_SIZE."""
         if self.cfg.font_size > MIN_FONT_SIZE:
             self.cfg.font_size -= 1
@@ -341,7 +342,7 @@ class FileExplorer(
         self.current_path = str(Path(current_path).resolve())
         current_path_changed.produce()
 
-    def go_up(self, _: tk.Event | None = None) -> None:
+    def go_up(self, _: FeEvent | None = None) -> None:
         """Ascend from the current directory."""
         up_path = self.fs.go_up(str(self.current_path))
 

@@ -7,7 +7,7 @@ from tkinter import messagebox, simpledialog, ttk
 
 from flitz.config import Config
 from flitz.context_menu import ContextMenuItem
-from flitz.frontends.base import ContextMenuWidget, Frontend
+from flitz.frontends.base import ContextMenuWidget, FeEvent, Frontend
 
 
 class ContextMenuWidgetTk(ContextMenuWidget):
@@ -61,10 +61,13 @@ class TkFrontend(Frontend):
     def bind_keyboard_shortcut(
         self,
         keys: str,
-        callback: Callable[[tk.Event], None],
+        callback: Callable[[FeEvent], None],
     ) -> None:
         """Bind a keyboard shortcut to a callback."""
-        self.root.bind(keys, callback)
+        self.root.bind(
+            keys,
+            lambda event: callback(FeEvent(event.x_root, event.y_root)),
+        )
 
     def set_app_icon(self, icon_path: Path) -> None:
         """Set the application icon."""
