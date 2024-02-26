@@ -1,7 +1,9 @@
 """A base class for the frontend."""
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from flitz.context_menu import ContextMenuItem
 
@@ -20,6 +22,14 @@ class ContextMenuWidget(ABC):
 
 class Frontend(ABC):
     """The base class for the frontend."""
+
+    @abstractmethod
+    def bind_keyboard_shortcut(
+        self,
+        keys: str,
+        callback: Callable[[Any], None],
+    ) -> None:
+        """Bind a keyboard shortcut to a callback."""
 
     @abstractmethod
     def set_app_icon(self, icon_path: Path) -> None:

@@ -1,6 +1,7 @@
 """Implementation of the frontend using Tkinter."""
 
 import tkinter as tk
+from collections.abc import Callable
 from pathlib import Path
 from tkinter import messagebox, simpledialog, ttk
 
@@ -51,6 +52,14 @@ class TkFrontend(Frontend):
             ],
             fieldbackground=cfg.background_color,
         )
+
+    def bind_keyboard_shortcut(
+        self,
+        keys: str,
+        callback: Callable[[tk.Event], None],
+    ) -> None:
+        """Bind a keyboard shortcut to a callback."""
+        self.root.bind(keys, callback)
 
     def set_app_icon(self, icon_path: Path) -> None:
         """Set the application icon."""

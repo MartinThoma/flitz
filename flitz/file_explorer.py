@@ -79,24 +79,54 @@ class FileExplorer(
         current_path_changed.produce()
 
         # Key bindings
-        self.bind(self.cfg.keybindings.font_size_increase, self.increase_font_size)
-        self.bind(self.cfg.keybindings.font_size_decrease, self.decrease_font_size)
-        self.bind(self.cfg.keybindings.rename_item, self.rename_item)
-        self.bind(self.cfg.keybindings.search, self.handle_search)
-        self.bind(self.cfg.keybindings.exit_search, self.handle_escape_key)
-        self.bind(self.cfg.keybindings.go_up, self.go_up)
-        self.bind(self.cfg.keybindings.open_context_menu, self.show_context_menu)
-        self.bind(self.cfg.keybindings.delete, self.confirm_delete_item)
-        self.bind(self.cfg.keybindings.create_folder, self.create_folder)
-        self.bind(self.cfg.keybindings.copy_selection, self.copy_selection)
-        self.bind(self.cfg.keybindings.paste, self.paste_selection)
-        self.bind(
+        self.frontend.bind_keyboard_shortcut(
+            self.cfg.keybindings.font_size_increase,
+            self.increase_font_size,
+        )
+        self.frontend.bind_keyboard_shortcut(
+            self.cfg.keybindings.font_size_decrease,
+            self.decrease_font_size,
+        )
+        self.frontend.bind_keyboard_shortcut(
+            self.cfg.keybindings.rename_item,
+            self.rename_item,
+        )
+        self.frontend.bind_keyboard_shortcut(
+            self.cfg.keybindings.search,
+            self.handle_search,
+        )
+        self.frontend.bind_keyboard_shortcut(
+            self.cfg.keybindings.exit_search,
+            self.handle_escape_key,
+        )
+        self.frontend.bind_keyboard_shortcut(self.cfg.keybindings.go_up, self.go_up)
+        self.frontend.bind_keyboard_shortcut(
+            self.cfg.keybindings.open_context_menu,
+            self.show_context_menu,
+        )
+        self.frontend.bind_keyboard_shortcut(
+            self.cfg.keybindings.delete,
+            self.confirm_delete_item,
+        )
+        self.frontend.bind_keyboard_shortcut(
+            self.cfg.keybindings.create_folder,
+            self.create_folder,
+        )
+        self.frontend.bind_keyboard_shortcut(
+            self.cfg.keybindings.copy_selection,
+            self.copy_selection,
+        )
+        self.frontend.bind_keyboard_shortcut(
+            self.cfg.keybindings.paste,
+            self.paste_selection,
+        )
+        self.frontend.bind_keyboard_shortcut(
             self.cfg.keybindings.toggle_hidden_file_visibility,
             self.toggle_hidden_files,
         )
 
         # This is on purpose not configurable
-        self.bind("<Control-m>", self.open_settings)
+        self.frontend.bind_keyboard_shortcut("<Control-m>", self.open_settings)
 
     @property
     def fs(self) -> FileSystem:
