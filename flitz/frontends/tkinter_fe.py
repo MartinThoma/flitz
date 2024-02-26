@@ -32,6 +32,11 @@ class TkFrontend(Frontend):
         self.root = root
 
         self.root.configure(background=cfg.background_color)
+        self.root.rowconfigure(0, weight=0, minsize=45)
+        self.root.rowconfigure(1, weight=1)
+        self.root.columnconfigure(0, weight=0, minsize=80, uniform="group1")
+        self.root.columnconfigure(1, weight=85, uniform="group1")
+        self.root.columnconfigure(2, weight=5, uniform="group1")
 
         self.root.style = ttk.Style()  # type: ignore[attr-defined]
         self.root.style.theme_use("clam")  # type: ignore[attr-defined]  # necessary to get the selection highlight
