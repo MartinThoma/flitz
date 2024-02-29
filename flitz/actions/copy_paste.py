@@ -2,12 +2,12 @@
 
 import logging
 import shutil
-import tkinter as tk
 from pathlib import Path
 from tkinter import ttk
 from typing import Any
 
 from flitz.events import current_folder_changed
+from flitz.frontends.base import FeEvent, Frontend
 
 logger = logging.getLogger(__name__)
 
@@ -18,31 +18,28 @@ class CopyPasteMixIn:
     tree: ttk.Treeview
     NAME_INDEX: int
     current_path: str
+    frontend: Frontend
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.clipboard_data: list[tuple[str, ...]] = []
+        self.clipboard_data: list[str] = []
 
-    def copy_selection(self, _: tk.Event) -> None:
+    def copy_selection(self, _: FeEvent) -> None:
         """Copy the selected item(s) to the clipboard."""
-        selected_items = self.tree.selection()
-        if selected_items:
+        selected_files = self.frontend.details_pane_get_current_selection()
+        if selected_files:
             # Get the values of selected items and store them in clipboard_data
-            self.clipboard_data = [
-                values
-                for item in selected_items
-                if (values := self.tree.item(item, "values")) != ""
-            ]
+            self.clipboard_data = selected_files
 
-    def paste_selection(self, _: tk.Event) -> None:
+    def paste_selection(self, _: FeEvent) -> None:
         """Paste the clipboard data as new items in the Treeview."""
         if self.clipboard_data:
             # Insert clipboard data as new items in the Treeview
-            for values in self.clipboard_data:
+            for path in self.clipboard_data:
                 current_folder_changed.produce()
                 # Copy the file/directory to the filesystem
                 # Assuming the first value is the file/directory path
-                source_path = Path(values[self.NAME_INDEX]).absolute()
+                source_path = Path(path).absolute()
 
                 destination_path = Path(self.current_path).absolute()
 

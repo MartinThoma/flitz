@@ -1,6 +1,5 @@
 """The ShowProperties MixIn."""
 
-import os
 from collections.abc import Iterable
 from tkinter import ttk
 from typing import Any
@@ -30,39 +29,10 @@ class ShowProperties:
 
     def show_properties(self) -> None:
         """Show properties."""
-        selected_item = self.tree.selection()
-        if not selected_item:
+        selected_items = self.frontend.details_pane_get_current_selection()
+        if not selected_items:
             return
-        if not isinstance(selected_item, tuple):
-
-            selected_file = self.tree.item(selected_item, "values")[self.NAME_INDEX]
-            file_path = os.path.join(self.current_path, selected_file)
-            entry = self.fs.get_file_or_folder(file_path)
-            try:
-                size = entry.file_size if isinstance(entry, File) else ""
-                type_ = "File" if isinstance(entry, File) else "Folder"
-                date_modified = entry.last_modified_at.strftime(
-                    "%Y-%m-%d %H:%M:%S",
-                )
-
-                # Create and display the properties dialog form
-                properties_dialog = FilePropertiesDialog(
-                    file_name=selected_file,
-                    file_size=size,
-                    file_type=type_,
-                    date_modified=date_modified,
-                )
-                properties_dialog.focus_set()
-                properties_dialog.grab_set()
-                properties_dialog.wait_window()
-
-            except OSError as e:
-                self.frontend.make_error_message(
-                    "Error",
-                    f"Failed to retrieve properties: {e}",
-                )
-        else:
-            self._show_properties_file_selection_list(selected_item)
+        self._show_properties_file_selection_list(selected_items)
 
     def _show_properties_file_selection_list(
         self,
@@ -74,10 +44,7 @@ class ShowProperties:
         size_sum = 0
         date_modified_min = None
         date_modified_max = None
-        for item in selected_item:
-            values = self.tree.item(item, "values")
-            selected_file = values[self.NAME_INDEX]
-            file_path = os.path.join(self.current_path, selected_file)
+        for file_path in selected_item:
             entry = self.fs.get_file_or_folder(file_path)
             if isinstance(entry, File):
                 nb_files += 1

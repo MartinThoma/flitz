@@ -1,7 +1,6 @@
 """Handle the right-click context menu."""
 
 from collections.abc import Callable
-from pathlib import Path
 
 
 class ContextMenuItem:
@@ -19,8 +18,8 @@ class ContextMenuItem:
         self,
         name: str,
         label: str,
-        action: Callable[[list[Path]], None],
-        is_active: Callable[[list[Path]], bool],
+        action: Callable[[list[str]], None],
+        is_active: Callable[[list[str]], bool],
     ) -> None:
         self.name = name
         self.label = label

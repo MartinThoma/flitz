@@ -23,16 +23,15 @@ class DeletionMixIn:
 
     def confirm_delete_item(self, _: tk.Event) -> None:
         """Ask for confirmation before deleting the selected file/folder."""
-        selected_item = self.tree.selection()
-        if selected_item:
-            values = self.tree.item(selected_item, "values")  # type: ignore[call-overload]
-            selected_file = values[self.NAME_INDEX]
-            confirmation = self.frontend.make_ok_cancel_message(
-                "Confirm Deletion",
-                f"Are you sure you want to delete '{selected_file}'?",
-            )
-            if confirmation:
-                self.delete_item(selected_file)
+        selected_items = self.frontend.details_pane_get_current_selection()
+        if selected_items:
+            for selected_file in selected_items:
+                confirmation = self.frontend.make_ok_cancel_message(
+                    "Confirm Deletion",
+                    f"Are you sure you want to delete '{selected_file}'?",
+                )
+                if confirmation:
+                    self.delete_item(selected_file)
 
     def delete_item(self, selected_file: str) -> None:
         """Delete the selected file/folder."""

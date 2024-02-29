@@ -34,3 +34,7 @@ current_path_changed = Event("current_path_changed")
 
 # either contents or the folder itself:
 current_folder_changed = Event("current_folder_changed")
+
+
+# Display modes: SEARCH, LIST
+display_mode_changed = Event("display_mode_changed")

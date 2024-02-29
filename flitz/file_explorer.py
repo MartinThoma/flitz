@@ -2,7 +2,6 @@
 
 import importlib.metadata
 import logging
-import tkinter as tk
 from pathlib import Path
 from tkinter.simpledialog import askstring
 from typing import TYPE_CHECKING
@@ -10,17 +9,16 @@ from typing import TYPE_CHECKING
 from .actions import CopyPasteMixIn, DeletionMixIn, RenameMixIn, ShowProperties
 from .config import CONFIG_PATH, Config, create_settings
 from .context_menu import ContextMenuItem
-from .events import current_folder_changed, current_path_changed
-from .file_systems import File, FileSystem
+from .events import current_folder_changed, current_path_changed, display_mode_changed
+from .file_systems import FileSystem
 from .file_systems.basic_fs import LocalFileSystem
 from .file_systems.ftp_fs import FTPFileSystem
-from .frontends.base import FeEvent
-from .frontends.tkinter_fe import TkFrontend
-from .ui import DetailsPaneMixIn, NavigationPaneMixIn, UrlPaneMixIn
-from .utils import get_unicode_symbol, open_file
+from .frontends.base import FeEvent, Frontend
+from .ui import DetailsPaneMixIn, NavigationPaneMixIn
+from .utils import open_file
 
 if TYPE_CHECKING:
-    from .frontends.base import ContextMenuWidget, Frontend
+    from .frontends.base import ContextMenuWidget
 logger = logging.getLogger(__name__)
 
 MIN_FONT_SIZE = 4
@@ -28,30 +26,24 @@ MAX_FONT_SIZE = 40
 
 
 class FileExplorer(
-    UrlPaneMixIn,
     DetailsPaneMixIn,
     NavigationPaneMixIn,
     DeletionMixIn,
     ShowProperties,
     RenameMixIn,
     CopyPasteMixIn,
-    tk.Tk,
 ):
-    """
-    FileExplorer is an app for navigating and exploring files and directories.
-
-    It's using Tkinter.
-    """
+    """FileExplorer is an app for navigating/exploring files and directories."""
 
     NAME_INDEX = 1
     COLUMNS = 5
 
-    def __init__(self, initial_path: str) -> None:
+    def __init__(self, cfg: Config, frontend: Frontend, initial_path: str) -> None:
         super().__init__()
 
-        self.cfg = Config.load()
-        self.frontend: Frontend = TkFrontend(self, self.cfg)
-        self.geometry(f"{self.cfg.window.width}x{self.cfg.window.height}")
+        self.cfg = cfg
+        self.frontend: Frontend = frontend
+        self.frontend.set_window_size(self.cfg.window.width, self.cfg.window.height)
 
         self.load_file_systems()
         self.load_context_menu_items()
@@ -65,17 +57,20 @@ class FileExplorer(
         self.context_menu: ContextMenuWidget | None = (
             None  # Track if context menu is open
         )
+        self.current_file_system = "/"
+        self.current_path = str(Path(initial_path).resolve())
+        self.display_mode = "LIST_VIEW"
 
+    def init(self) -> None:
+        """Initialize the app."""
         self.create_widgets()
 
         def set_title() -> None:
             title = self.cfg.window.title.format(current_path=self.current_path)
-            self.title(title)
+            self.frontend.set_window_title(title)
 
         current_path_changed.consumed_by(set_title)
 
-        self.current_file_system = "/"
-        self.current_path = str(Path(initial_path).resolve())
         current_folder_changed.produce()
         current_path_changed.produce()
 
@@ -220,10 +215,7 @@ class FileExplorer(
         if hasattr(self, "context_menu") and self.context_menu:
             self.context_menu.close()
         item_registry = {item.name: item for item in self.registered_context_menu_items}
-        selection = self.tree.selection()  # type: ignore[attr-defined]
-        values = [self.tree.item(item, "values") for item in selection]  # type: ignore[attr-defined, call-overload]
-        r = Path(self.current_path)  # type: ignore[attr-defined]
-        selected_files: list[Path] = [r / value[self.NAME_INDEX] for value in values]  # type: ignore[attr-defined]
+        selected_files = self.frontend.details_pane_get_current_selection()
         self.context_menu = self.frontend.make_context_menu(
             [item_registry[item] for item in self.cfg.context_menu],
             selected_files,
@@ -265,7 +257,8 @@ class FileExplorer(
         if self.search_mode:
             # Reload files and clear search mode
             current_folder_changed.produce()  # a bit of an abuse of the event
-            self.url_bar_label.config(text="Location:")
+            self.display_mode = "LIST_VIEW"
+            display_mode_changed.produce()
             self.search_mode = False
 
     def handle_search(self, _: FeEvent) -> None:
@@ -275,35 +268,15 @@ class FileExplorer(
         if search_term is not None:
             # Perform search and update Treeview
             self.search_files(search_term)
-            self.url_bar_label.config(text="Search:")
+            self.display_mode = "SEARCH_VIEW"
+            display_mode_changed.produce()
             self.search_mode = True
 
     def search_files(self, search_term: str) -> None:
         """Filter and display files in Treeview based on search term."""
         path = self.current_path
-        self.tree.delete(*self.tree.get_children())  # Clear existing items
 
-        entries = sorted(
-            self.fs.list_contents(path, recursive=True),
-            key=lambda x: (isinstance(x, File), x.name),
-        )
-
-        for entry in entries:
-            if search_term.lower() in entry.name.lower():
-                size = entry.file_size if isinstance(entry, File) else ""
-                type_ = "File" if isinstance(entry, File) else "Folder"
-                date_modified = (
-                    entry.last_modified_at.strftime("%Y-%m-%d %H:%M:%S")
-                    if entry.last_modified_at
-                    else ""
-                )
-                unicode_symbol = get_unicode_symbol(entry)
-
-                self.tree.insert(
-                    "",
-                    "end",
-                    values=(unicode_symbol, entry.name, size, type_, date_modified),
-                )
+        self.frontend.make_search_view(path, search_term)
 
     def increase_font_size(self, _: FeEvent) -> None:
         """Increase the font size by one, up to MAX_FONT_SIZE."""
@@ -323,8 +296,6 @@ class FileExplorer(
 
         Trigger this after the font size was updated by the user.
         """
-        font = (self.cfg.font, self.cfg.font_size)
-        self.url_bar.config(font=font)
         self.frontend.update_font_size(
             self.cfg.font,
             self.cfg.font_size,
@@ -336,6 +307,11 @@ class FileExplorer(
         self.create_url_pane()
         self.create_navigation_pane()
         self.create_details_pane()
+
+    def create_url_pane(self) -> None:
+        """URL bar with an "up" button."""
+        up_path = Path(__file__).resolve().parent / "static/up.png"
+        self.frontend.create_url_pane_widget(up_path)
 
     def set_current_path(self, current_path: str) -> None:
         """Set the current path and update the UI."""

@@ -3,8 +3,10 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from flitz.context_menu import ContextMenuItem
+from flitz.file_systems import File, Folder
 
 
 class ContextMenuWidget(ABC):
@@ -30,6 +32,18 @@ class FeEvent:
 class Frontend(ABC):
     """The base class for the frontend."""
 
+    def bind_app(self, app: Any) -> None:
+        """Bind the app to the frontend."""
+        self.app = app
+
+    @abstractmethod
+    def mainloop(self) -> None:
+        """Start the main loop of the frontend."""
+
+    @abstractmethod
+    def set_window_title(self, title: str) -> None:
+        """Set the window title."""
+
     @abstractmethod
     def bind_keyboard_shortcut(
         self,
@@ -41,6 +55,10 @@ class Frontend(ABC):
     @abstractmethod
     def set_app_icon(self, icon_path: Path) -> None:
         """Set the application icon."""
+
+    @abstractmethod
+    def set_window_size(self, width: int, height: int) -> None:
+        """Set the window size."""
 
     @abstractmethod
     def update_font_size(
@@ -75,6 +93,38 @@ class Frontend(ABC):
     def make_context_menu(
         self,
         items: list[ContextMenuItem],
-        selected_files: list[Path],
+        selected_files: list[str],
     ) -> ContextMenuWidget:
         """Create a context menu with the given items."""
+
+    @abstractmethod
+    def create_url_pane_widget(self, up_path: Path) -> None:
+        """Create the URL pane widget."""
+
+    @abstractmethod
+    def create_navigation_pane_widget(self) -> None:
+        """Create the navigation pane widget."""
+
+    @abstractmethod
+    def navigation_pane_update(self) -> None:
+        """Update the navigation pane."""
+
+    @abstractmethod
+    def create_details_pane_widget(self) -> None:
+        """Create the details pane widget."""
+
+    @abstractmethod
+    def details_pane_set_contents(
+        self,
+        entries: list[File | Folder],
+        select_item: Path | None = None,
+    ) -> None:
+        """Set the contents of the details pane."""
+
+    @abstractmethod
+    def details_pane_get_current_selection(self) -> list[str]:
+        """Get the current selection in the details pane."""
+
+    @abstractmethod
+    def make_search_view(self, path: str, search_term: str) -> None:
+        """Create the search view."""

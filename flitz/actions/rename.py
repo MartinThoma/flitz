@@ -5,6 +5,7 @@ from pathlib import Path
 from tkinter import ttk
 from typing import Any
 
+from flitz.events import current_folder_changed
 from flitz.frontends.base import Frontend
 
 
@@ -22,11 +23,10 @@ class RenameMixIn:
 
     def rename_item(self, _: tk.Event | None = None) -> None:
         """Trigger a rename action."""
-        selected_item = self.tree.selection()
-        if selected_item:
-            values = self.tree.item(selected_item, "values")  # type: ignore[call-overload]
-            if values:
-                selected_file = values[self.NAME_INDEX]
+        selected_items = self.frontend.details_pane_get_current_selection()
+        if selected_items:
+            if len(selected_items) == 1:
+                selected_file = selected_items[0]
                 # Implement the renaming logic using the selected_file
                 # You may use an Entry widget or a dialog to get the new name
                 new_name = self.frontend.make_textinput_message(
@@ -34,32 +34,21 @@ class RenameMixIn:
                     f"Enter new name for {selected_file}:",
                 )
                 if new_name:
-                    # Update the treeview and perform the renaming
-                    self.tree.item(
-                        selected_item,  # type: ignore[call-overload]
-                        values=(new_name, values[1], values[2], values[3]),
-                    )
                     # Perform the actual renaming operation in the file system if needed
                     old_path = Path(self.current_path) / selected_file
                     new_path = Path(self.current_path) / new_name
 
                     try:
                         old_path.rename(new_path)
-                        assert self.NAME_INDEX == 1  # noqa: S101
-                        assert len(values) == self.COLUMNS  # noqa: S101
-                        self.tree.item(
-                            selected_item,  # type: ignore[call-overload]
-                            values=(
-                                values[0],
-                                new_name,
-                                values[2],
-                                values[3],
-                                values[4],
-                            ),
-                        )
+                        current_folder_changed.produce()
                     except OSError as e:
                         # Handle errors, for example, show an error message
                         self.frontend.make_error_message(
                             "Error",
                             f"Error renaming {selected_file}: {e}",
                         )
+            else:
+                self.frontend.make_error_message(
+                    "Error",
+                    "Please select only one item to rename",
+                )
