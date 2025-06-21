@@ -45,3 +45,24 @@ Features:
     just like any other configuration. They can (partially) override the
     existing config.
 17. Ctrl+h toggles the visibility of hidden files/folders
+18. It should be possible to enter a path in the URL bar and press Enter to
+    navigate to that path.
+19. When a new file/directory is created, it should be selected in the view.
+20. Allow switching between an icon view (Ctrl+1) and a list view (Ctrl+2).
+21. Show a menu bar with the following entries:
+    1. File
+        1. New Folder
+        2. New File
+        3. Open
+        4. Rename
+        5. Delete
+    2. Edit
+        1. Copy
+        2. Cut
+        3. Paste
+    3. View
+        1. Show Hidden Files (Ctrl+h)
+        2. Icon View (Ctrl+1)
+        3. List View (Ctrl+2)
+    4. Help
+        1. About Flitz
