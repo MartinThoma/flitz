@@ -13,7 +13,7 @@ import sys
 sys.path.insert(0, os.path.abspath("."))
 sys.path.insert(0, os.path.abspath("../"))
 
-import flitz as py_pkg  # noqa: E402
+import flitz as py_pkg
 
 shutil.copyfile("../CHANGELOG.md", "meta/CHANGELOG.md")
 
@@ -50,10 +50,8 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
 html_theme_options = {
-    "canonical_url": "",
-    "analytics_id": "",
     "logo_only": True,
-    "display_version": True,
+    "version_selector": True,
     "prev_next_buttons_location": "bottom",
     "style_external_links": False,
     # Toc options

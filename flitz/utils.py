@@ -18,9 +18,9 @@ def open_file(file_path: str) -> None:
     elif system == "linux":  # Linux
         subprocess.run(["xdg-open", file_path], check=False)  # noqa: S603, S607
     elif system == "windows":  # Windows
-        subprocess.run(
+        subprocess.run(  # noqa: S602
             ["start", file_path],  # noqa: S607
-            shell=True,  # noqa: S602
+            shell=True,
             check=False,
         )
     else:

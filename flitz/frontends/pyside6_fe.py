@@ -253,7 +253,7 @@ class PySide6Frontend(Frontend):
         up_button = QPushButton()
         up_button.setIcon(QIcon(str(up_path)))
         up_button.setIconSize(QSize(24, 24))
-        up_button.clicked.connect(lambda: self.app.go_up())
+        up_button.clicked.connect(lambda _checked=False: self.app.go_up())
         url_layout.addWidget(up_button)
 
         self.url_bar_label = QLabel("Location:")

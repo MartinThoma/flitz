@@ -11,7 +11,7 @@ from datetime import datetime
 class File:
     """A file."""
 
-    def __init__(  # noqa: PLR0913
+    def __init__(  # noqa: PLR0913, PLR0917
         self,
         name: str,
         path: str,

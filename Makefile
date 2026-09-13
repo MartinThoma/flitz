@@ -1,8 +1,16 @@
 maint:
 	pre-commit autoupdate
-	pip-compile -U requirements/ci.in
-	pip-compile -U requirements/dev.in
-	pip-compile -U requirements/docs.in
+	uv lock --upgrade
 
-upload:
-	flit publish
+test:
+	uv run pytest
+
+lint:
+	uv run ruff check
+	uv run ruff format --check
+	uv run mypy
+
+docs:
+	uv run --group docs sphinx-build docs docs/_build/html
+
+.PHONY: maint test lint docs

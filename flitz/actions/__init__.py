@@ -9,4 +9,4 @@ from flitz.actions.deletion import DeletionMixIn
 from flitz.actions.rename import RenameMixIn
 from flitz.actions.show_properties import ShowProperties
 
-__all__ = ["DeletionMixIn", "ShowProperties", "RenameMixIn", "CopyPasteMixIn"]
+__all__ = ["CopyPasteMixIn", "DeletionMixIn", "RenameMixIn", "ShowProperties"]

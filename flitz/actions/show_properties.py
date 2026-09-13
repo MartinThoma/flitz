@@ -57,6 +57,8 @@ class ShowProperties:
                     else 0
                 )
                 date_modified = entry.last_modified_at
+                if date_modified is None:
+                    continue
                 if date_modified_min is None:
                     date_modified_min = date_modified
                 else:
@@ -80,6 +82,8 @@ class ShowProperties:
             date_modified=(
                 f"{date_modified_min:%Y-%m-%d %H:%M} - "
                 f"{date_modified_max:%Y-%m-%d %H:%M}"
+                if date_modified_min and date_modified_max
+                else ""
             ),
         )
         properties_dialog.focus_set()
