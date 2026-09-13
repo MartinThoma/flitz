@@ -140,6 +140,28 @@ def make_stylesheet(cfg: Config) -> str:
     QSplitter::handle {{
         background: {border};
     }}
+    /* Details of the selected file */
+    QWidget#details_panel {{
+        background: {panel};
+    }}
+    QWidget#details_panel QLabel {{
+        color: {panel_text};
+    }}
+    QWidget#details_panel QLabel#details_title,
+    QWidget#details_panel QLabel#details_type,
+    QWidget#details_panel QLabel#details_key {{
+        color: {muted};
+    }}
+    QWidget#details_panel QToolButton {{
+        border: 1px solid transparent;
+        border-radius: 6px;
+        padding: 2px;
+    }}
+    QWidget#details_panel QToolButton:hover {{
+        background: {hover};
+        border-color: {border};
+    }}
+
     QStatusBar {{
         background: {panel};
         color: {muted};

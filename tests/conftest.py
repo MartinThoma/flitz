@@ -9,6 +9,9 @@ import pytest
 # Run Qt without a display; must be set before a QApplication is created
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PySide6.QtCore import QEvent
+from PySide6.QtWidgets import QApplication
+
 from flitz import FileExplorer
 from flitz.config import Config
 from flitz.events import (
@@ -39,7 +42,13 @@ def file_explorer(folder: Path) -> Iterator[FileExplorer]:
     frontend.bind_app(app)
     app.init()
     yield app
+    frontend.stop_search()
+    frontend.renaming = None  # closing the window must not rename in later tests
+    frontend.qapp.aboutToQuit.disconnect(frontend.stop_search)
     frontend.window.close()
+    # Delete the window; otherwise every test leaves widgets behind
+    frontend.window.deleteLater()
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
     # The events are global; don't let the app leak into other tests
     for event in (current_folder_changed, current_path_changed, display_mode_changed):
         event.listeners.clear()

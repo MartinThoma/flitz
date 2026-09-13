@@ -4,8 +4,9 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from flitz.file_systems import File, FileSystem
+from flitz.file_systems import File, FileSystem, Folder
 from flitz.frontends.base import Frontend
+from flitz.selection import summarize
 
 
 class ShowProperties:
@@ -36,57 +37,27 @@ class ShowProperties:
         self,
         selected_item: Iterable[str],
     ) -> None:
-
         selected_paths = list(selected_item)
-        nb_files = 0
-        nb_folders = 0
-        size_sum = 0
-        date_modified_min = None
-        date_modified_max = None
-        for file_path in selected_paths:
-            entry = self.fs.get_file_or_folder(file_path)
-            if isinstance(entry, File):
-                nb_files += 1
-            else:
-                nb_folders += 1
-            try:
-                size_sum += (
-                    entry.file_size
-                    if isinstance(entry, File) and entry.file_size
-                    else 0
-                )
-                date_modified = entry.last_modified_at
-                if date_modified is None:
-                    continue
-                if date_modified_min is None:
-                    date_modified_min = date_modified
-                else:
-                    date_modified_min = min(date_modified, date_modified_min)
-
-                if date_modified_max is None:
-                    date_modified_max = date_modified
-                else:
-                    date_modified_max = max(date_modified, date_modified_max)
-
-            except OSError as e:
-                self.frontend.make_error_message(
-                    "Error",
-                    f"Failed to retrieve properties: {e}",
-                )
-
-        contents = [
-            f"{count} {noun}{'' if count == 1 else 's'}"
-            for count, noun in [(nb_files, "file"), (nb_folders, "folder")]
-            if count
+        entries = [
+            entry
+            for path in selected_paths
+            if (entry := self._get_file_or_folder(path)) is not None
         ]
-        modified_text = ""
-        if date_modified_min and date_modified_max:
-            modified_text = f"{date_modified_min:%Y-%m-%d %H:%M}"
-            if date_modified_max != date_modified_min:
-                modified_text += f" - {date_modified_max:%Y-%m-%d %H:%M}"
+        summary = summarize(entries)
         self.frontend.make_properties_dialog(
             file_name=Path(selected_paths[0]).name if len(selected_paths) == 1 else "",
-            file_size=size_sum,
-            file_type=", ".join(contents),
-            date_modified=modified_text,
+            file_size=summary.files_size,
+            file_type=summary.contents,
+            date_modified=summary.modified,
         )
+
+    def _get_file_or_folder(self, path: str) -> File | Folder | None:
+        """Get a file/folder; show an error if that's not possible."""
+        try:
+            return self.fs.get_file_or_folder(path)
+        except OSError as e:
+            self.frontend.make_error_message(
+                "Error",
+                f"Failed to retrieve properties: {e}",
+            )
+            return None

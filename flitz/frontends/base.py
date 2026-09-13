@@ -145,6 +145,14 @@ class Frontend(ABC):
         """
 
     @abstractmethod
+    def show_details(self, entries: list[File | Folder]) -> None:
+        """Show the details of one or several files/folders."""
+
+    @abstractmethod
+    def close_details(self) -> bool:
+        """Close the details if they are shown; return whether they were shown."""
+
+    @abstractmethod
     def make_search_view(self, path: str, search_term: str) -> None:
         """Show the files/folders below path whose name contains search_term."""
 

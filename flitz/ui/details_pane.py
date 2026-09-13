@@ -25,6 +25,8 @@ class DetailsPaneMixIn:
         current_folder_changed.consumed_by(self.load_files)
         # (attribute of File/Folder, direction); the first element has priority
         self.sort_order: list[tuple[str, SortDirection]] = [("name", "ASC")]
+        # Selected when the next folder is loaded, e.g. the folder you came from
+        self.select_on_load: Path | None = None
 
     @property
     def fs(self) -> FileSystem:  # just for mypy
@@ -80,5 +82,8 @@ class DetailsPaneMixIn:
 
     def load_files(self, select_item: Path | None = None) -> None:
         """Load a list of files/folders for the tree view."""
+        if select_item is None:
+            select_item = self.select_on_load
+        self.select_on_load = None
         entries = self.sort_entries(self.fs.list_contents(self.current_path))
         self.frontend.details_pane_set_contents(entries, select_item)

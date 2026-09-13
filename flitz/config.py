@@ -43,6 +43,8 @@ class ConfigKeybindings(BaseModel):
     paste: str = "<Control-v>"
     toggle_hidden_file_visibility: str = "<Control-h>"
     refresh: str = "<F5>"
+    enter_folder: str = "<Right>"  # or show the details of the selected file
+    leave_folder: str = "<Left>"  # go up and select the folder you came from
 
 
 class WindowConfig(BaseModel):

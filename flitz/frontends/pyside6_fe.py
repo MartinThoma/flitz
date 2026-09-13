@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import cast
 
 from PySide6.QtCore import (
+    QItemSelection,
     QItemSelectionModel,
     QMimeDatabase,
     QModelIndex,
@@ -66,8 +67,10 @@ from flitz.context_menu import ContextMenuItem
 from flitz.events import current_path_changed, display_mode_changed
 from flitz.file_systems import File, Folder
 from flitz.frontends.base import ContextMenuWidget, FeEvent, Frontend
+from flitz.frontends.pyside6_details import DetailsPanel
 from flitz.frontends.pyside6_style import make_stylesheet
 from flitz.search import Search
+from flitz.selection import summarize
 from flitz.utils import format_size, open_file
 
 logger = logging.getLogger(__name__)
@@ -83,6 +86,7 @@ NAME_COLUMN, SIZE_COLUMN, TYPE_COLUMN, MODIFIED_COLUMN = range(len(DETAILS_COLUM
 
 APP_NAME = "flitz"
 SIDEBAR_WIDTH = 210
+DETAILS_PANEL_WIDTH = 280
 
 # Icon themes to use if the platform doesn't set one (e.g. without a desktop)
 FALLBACK_ICON_THEMES = ["Yaru", "breeze", "Adwaita"]
@@ -260,7 +264,10 @@ class PySide6Frontend(Frontend):
         # Desktops use these to group the windows and to find the app icon
         self.qapp.setApplicationName(APP_NAME)
         self.qapp.setDesktopFileName(APP_NAME)
-        self.qapp.setStyle("Fusion")  # looks the same on all platforms
+        # Fusion looks the same on all platforms. Setting a style restyles all
+        # existing widgets, so only do it once.
+        if self.qapp.style().name().lower() != "fusion":
+            self.qapp.setStyle("Fusion")
         self.set_fallback_icon_theme()
 
         self.window = QMainWindow()
@@ -643,8 +650,6 @@ class PySide6Frontend(Frontend):
             item.setData(Qt.ItemDataRole.UserRole, (fs_name, "/"))
             sidebar.addItem(item)
 
-        self.splitter.setSizes([SIDEBAR_WIDTH, self.window.width() - SIDEBAR_WIDTH])
-
     def create_details_pane_widget(self) -> None:
         """Create the details pane widget."""
         table = QTableWidget()
@@ -705,7 +710,8 @@ class PySide6Frontend(Frontend):
 
         self.splitter.addWidget(table)
         self.splitter.setStretchFactor(1, 1)
-        self.splitter.setSizes([SIDEBAR_WIDTH, self.cfg.window.width - SIDEBAR_WIDTH])
+
+        self.create_details_panel()
 
         self.update_font_size(
             self.cfg.font,
@@ -875,13 +881,15 @@ class PySide6Frontend(Frontend):
         selection_model = table.selectionModel()
         self.selecting_rows = True
         try:
-            table.clearSelection()
-            flags = (
-                QItemSelectionModel.SelectionFlag.Select
-                | QItemSelectionModel.SelectionFlag.Rows
-            )
+            # One selection change for all rows, not one for each row
+            selection = QItemSelection()
             for row in rows:
-                selection_model.select(model.index(row, 0), flags)
+                selection.select(model.index(row, 0), model.index(row, 0))
+            selection_model.select(
+                selection,
+                QItemSelectionModel.SelectionFlag.ClearAndSelect
+                | QItemSelectionModel.SelectionFlag.Rows,
+            )
             selection_model.setCurrentIndex(
                 model.index(rows[0], 0),
                 QItemSelectionModel.SelectionFlag.NoUpdate,
@@ -895,6 +903,9 @@ class PySide6Frontend(Frontend):
         if not self.selecting_rows:
             self.selection_is_automatic = False
         self.update_status_bar()
+        # Open details follow the selection, e.g. when moving with the arrow keys
+        if hasattr(self, "details_panel") and not self.details_panel.isHidden():
+            self.show_details(self.get_selected_entries())
 
     def update_status_bar(self) -> None:
         """Show the number of items and the size of the selection."""
@@ -973,9 +984,7 @@ class PySide6Frontend(Frontend):
 
     def details_pane_get_current_selection(self) -> list[str]:
         """Get the current selection in the details pane."""
-        selection_model = self.details_table.selectionModel()
-        rows = sorted({index.row() for index in selection_model.selectedRows()})
-        return [str(self.details_entries[row].path) for row in rows]
+        return [str(entry.path) for entry in self.get_selected_entries()]
 
     def make_search_view(self, path: str, search_term: str) -> None:
         """
@@ -1047,6 +1056,73 @@ class PySide6Frontend(Frontend):
         """Stop the search, but keep showing the results found so far."""
         if self.search is not None:
             self.search.stop()
+
+    def create_details_panel(self) -> None:
+        """Create the hidden panel for the details of a file, right of the list."""
+        self.details_panel = DetailsPanel(
+            self.theme_icon(
+                "window-close", QStyle.StandardPixmap.SP_TitleBarCloseButton
+            ),
+        )
+        self.details_panel.close_button.clicked.connect(self.close_details)
+        self.details_panel.hide()
+        self.splitter.addWidget(self.details_panel)
+        self.splitter.setStretchFactor(2, 0)
+        table_width = self.cfg.window.width - SIDEBAR_WIDTH
+        self.splitter.setSizes([SIDEBAR_WIDTH, table_width, 0])
+
+    def show_details(self, entries: list[File | Folder]) -> None:
+        """Show the details of one or several files/folders right of the list."""
+        if not entries:
+            return
+        if len(entries) == 1:
+            description, icon = self.get_file_type(entries[0])
+            self.details_panel.show_entry(
+                entries[0],
+                description,
+                icon,
+                allow_preview=getattr(self.app.fs, "type", "") == "local",
+            )
+        else:
+            self.details_panel.show_selection(
+                summarize(entries),
+                self.get_stack_icons(entries),
+            )
+        if self.details_panel.isHidden():
+            sizes = self.splitter.sizes()
+            # The details show the type, so give the names more space
+            self.details_table.hideColumn(TYPE_COLUMN)
+            self.details_panel.show()
+            width = min(DETAILS_PANEL_WIDTH, sizes[1] // 2)
+            self.splitter.setSizes([sizes[0], sizes[1] - width, width])
+
+    def close_details(self) -> bool:
+        """Close the details; return whether they were shown."""
+        if self.details_panel.isHidden():
+            return False
+        self.details_panel.hide()
+        self.details_table.showColumn(TYPE_COLUMN)
+        self.details_table.setFocus()
+        return True
+
+    def get_stack_icons(self, entries: list[File | Folder]) -> list[QIcon]:
+        """Get icons for a stack: different types first, at most three."""
+        icons: dict[str, QIcon] = {}
+        for entry in entries:
+            description, icon = self.get_file_type(entry)
+            icons.setdefault(description, icon)
+            if len(icons) == 3:  # noqa: PLR2004
+                break
+        stack = list(icons.values())
+        while len(stack) < min(3, len(entries)):
+            stack.append(stack[-1])
+        return stack
+
+    def get_selected_entries(self) -> list[File | Folder]:
+        """Get the selected files and folders in the order of the list."""
+        selection_model = self.details_table.selectionModel()
+        rows = sorted({index.row() for index in selection_model.selectedRows()})
+        return [self.details_entries[row] for row in rows]
 
     def stop_search(self) -> None:
         """Stop a running search; return once it no longer uses the file system."""

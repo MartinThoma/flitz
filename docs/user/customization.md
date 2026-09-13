@@ -34,6 +34,8 @@ keybindings:
   search: <Control-f>
   toggle_hidden_file_visibility: <Control-h>
   refresh: <F5>
+  enter_folder: <Right>
+  leave_folder: <Left>
 ```
 
 Note the `external_config` part. This allows you to just copy configurations you

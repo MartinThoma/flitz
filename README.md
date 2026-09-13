@@ -64,7 +64,9 @@ flitz --version
 | Action                    | Shortcut                                      |
 | ------------------------- | --------------------------------------------- |
 | Open file / enter folder  | <kbd>Enter</kbd> or double-click              |
-| Go to parent folder       | <kbd>Backspace</kbd>                          |
+| Enter folder / show file details | <kbd>→</kbd>                           |
+| Go to parent folder       | <kbd>←</kbd> or <kbd>Backspace</kbd>          |
+| Close details             | <kbd>Esc</kbd>                                |
 | Refresh                   | <kbd>F5</kbd>                                 |
 | Search                    | <kbd>Ctrl</kbd>+<kbd>F</kbd>                  |
 | Cancel / leave search     | <kbd>Esc</kbd>                                |

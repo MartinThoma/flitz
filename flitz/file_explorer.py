@@ -9,7 +9,7 @@ from .actions import CopyPasteMixIn, DeletionMixIn, RenameMixIn, ShowProperties
 from .config import CONFIG_PATH, Config, create_settings
 from .context_menu import ContextMenuItem
 from .events import current_folder_changed, current_path_changed, display_mode_changed
-from .file_systems import FileSystem
+from .file_systems import FileSystem, Folder
 from .file_systems.basic_fs import LocalFileSystem
 from .file_systems.ftp_fs import FTPFileSystem
 from .frontends.base import FeEvent, Frontend
@@ -97,6 +97,14 @@ class FileExplorer(
         )
         self.frontend.bind_keyboard_shortcut(self.cfg.keybindings.go_up, self.go_up)
         self.frontend.bind_keyboard_shortcut(
+            self.cfg.keybindings.enter_folder,
+            self.enter_folder,
+        )
+        self.frontend.bind_keyboard_shortcut(
+            self.cfg.keybindings.leave_folder,
+            self.go_up,
+        )
+        self.frontend.bind_keyboard_shortcut(
             self.cfg.keybindings.open_context_menu,
             self.show_context_menu,
         )
@@ -148,11 +156,13 @@ class FileExplorer(
             )
 
     def handle_escape_key(self, event: FeEvent) -> None:
-        """Close the context menu if open and exit the search mode."""
+        """Close the context menu if open, then the details, then the search."""
         # The menu might already be closed, so Escape must not stop here
         if self.context_menu:
             self.context_menu.close()
             self.context_menu = None
+        if self.frontend.close_details():
+            return
         if self.search_mode:
             self.exit_search_mode(event)
 
@@ -350,8 +360,29 @@ class FileExplorer(
         current_path_changed.produce()
 
     def go_up(self, _: FeEvent | None = None) -> None:
-        """Ascend from the current directory."""
+        """Ascend from the current directory and select the folder you came from."""
         up_path = self.fs.go_up(str(self.current_path))
 
-        if self.fs.does_path_exist(up_path):
+        if up_path != self.current_path and self.fs.does_path_exist(up_path):
+            self.select_on_load = Path(self.current_path)
             self.set_current_path(up_path)
+
+    def enter_folder(self, _: FeEvent | None = None) -> None:
+        """
+        Enter the selected folder or show the details of the selection.
+
+        The details are shown for a single file or for several selected files
+        and folders.
+        """
+        selection = self.frontend.details_pane_get_current_selection()
+        if not selection:
+            return
+        try:
+            entries = [self.fs.get_file_or_folder(path) for path in selection]
+        except OSError as e:  # e.g. deleted in the meantime
+            self.frontend.make_error_message("Error", str(e))
+            return
+        if len(entries) == 1 and isinstance(entries[0], Folder):
+            self.set_current_path(str(entries[0].path))
+        else:
+            self.frontend.show_details(entries)

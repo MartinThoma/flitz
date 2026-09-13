@@ -14,7 +14,8 @@ from flitz.file_properties_dialog import FilePropertiesDialog
 from flitz.file_systems import File, Folder
 from flitz.frontends.base import ContextMenuWidget, FeEvent, Frontend
 from flitz.search import Search
-from flitz.utils import get_unicode_symbol, open_file
+from flitz.selection import summarize
+from flitz.utils import format_size, get_unicode_symbol, open_file
 
 
 class ContextMenuWidgetTk(ContextMenuWidget):
@@ -493,6 +494,24 @@ class TkFrontend(Frontend):
                 "end",
                 values=(unicode_symbol, entry.name, size, type_, date_modified),
             )
+
+    def show_details(self, entries: list[File | Folder]) -> None:
+        """Show the details of one or several files/folders in a message box."""
+        summary = summarize(entries)
+        if len(entries) == 1:
+            lines = [f"Name: {entries[0].name}"]
+        else:
+            lines = [f"Selected: {summary.contents}"]
+        lines.append(f"Location: {summary.location or 'Several folders'}")
+        if summary.nb_files:
+            lines.append(f"Size: {format_size(summary.files_size)}")
+        if summary.modified:
+            lines.append(f"Modified: {summary.modified}")
+        messagebox.showinfo("Details", "\n".join(lines))
+
+    def close_details(self) -> bool:
+        """Report that nothing was closed: the details are a message box."""
+        return False
 
     def stop_search(self) -> None:
         """Stop a running search; the search of this frontend is synchronous."""
