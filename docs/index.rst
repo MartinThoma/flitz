@@ -6,7 +6,12 @@
 Welcome to flitz!
 =================
 
-flitz is a file manager
+flitz is a fast, keyboard-friendly file manager written in Python.
+
+.. image:: _static/flitz.png
+   :alt: Screenshot of flitz
+
+Install it with ``pipx install flitz`` and start it with ``flitz``.
 
 .. toctree::
    :caption: User Guide

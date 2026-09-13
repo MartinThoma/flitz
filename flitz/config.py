@@ -16,15 +16,15 @@ CONFIG_PATH = Path.home() / ".flitz.yml"
 class ConfigSelection(BaseModel):
     """Configuration related to the selected item."""
 
-    background_color: str = "#87a556"
-    text_color: str = "#fcfdfa"
+    background_color: str = "#16778f"
+    text_color: str = "#ffffff"
 
 
 class ConfigMenu(BaseModel):
     """Configuration related to the menu."""
 
-    background_color: str = "#eeedeb"
-    text_color: str = "#000000"
+    background_color: str = "#f5f6f7"
+    text_color: str = "#1f2328"
 
 
 class ConfigKeybindings(BaseModel):
@@ -42,6 +42,7 @@ class ConfigKeybindings(BaseModel):
     copy_selection: str = "<Control-c>"
     paste: str = "<Control-v>"
     toggle_hidden_file_visibility: str = "<Control-h>"
+    refresh: str = "<F5>"
 
 
 class WindowConfig(BaseModel):
@@ -73,7 +74,7 @@ class Config(BaseModel):
     font: str = "TkDefaultFont"
     font_size: int = 14
     window: WindowConfig = WindowConfig()
-    text_color: str = "#000000"
+    text_color: str = "#1f2328"
     background_color: str = "#ffffff"
     selection: ConfigSelection = ConfigSelection()
     menu: ConfigMenu = ConfigMenu()

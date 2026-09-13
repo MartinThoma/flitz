@@ -6,8 +6,9 @@ requires = [
 
 [project]
 name = "flitz"
-description = "Fast Location / Indexing / Traversal Zone."
+description = "A fast, keyboard-friendly file manager (Fast Location / Indexing / Traversal Zone)."
 readme = "README.md"
+keywords = [ "file browser", "file explorer", "file manager", "qt" ]
 license = "MIT"
 license-files = [ "LICENSE" ]
 maintainers = [ { name = "Martin Thoma", email = "info@martin-thoma.de" } ]

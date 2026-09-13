@@ -1,6 +1,7 @@
 """Handle the right-click context menu."""
 
 from collections.abc import Callable
+from pathlib import Path
 
 
 class ContextMenuItem:
@@ -11,15 +12,17 @@ class ContextMenuItem:
         name: A name that can be used to select / deselect the item via
             configuration.
         label: This string is shown in the actual context menu
-        action: The function that is executed when the item is clicked.
+        action: The function that is executed when the item is clicked. It
+            gets the paths of the selected files/folders.
+        is_active: Whether the item is shown for the selected paths.
     """
 
     def __init__(
         self,
         name: str,
         label: str,
-        action: Callable[[list[str]], None],
-        is_active: Callable[[list[str]], bool],
+        action: Callable[[list[Path]], None],
+        is_active: Callable[[list[Path]], bool],
     ) -> None:
         self.name = name
         self.label = label

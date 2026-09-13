@@ -33,6 +33,7 @@ keybindings:
   rename_item: <F2>
   search: <Control-f>
   toggle_hidden_file_visibility: <Control-h>
+  refresh: <F5>
 ```
 
 Note the `external_config` part. This allows you to just copy configurations you

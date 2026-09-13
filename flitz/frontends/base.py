@@ -103,7 +103,7 @@ class Frontend(ABC):
     def make_context_menu(
         self,
         items: list[ContextMenuItem],
-        selected_files: list[str],
+        selected_files: list[Path],
     ) -> ContextMenuWidget:
         """Create a context menu with the given items."""
 

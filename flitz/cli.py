@@ -23,7 +23,7 @@ def get_parser() -> argparse.ArgumentParser:
     """Create the parser for the command-line arguments."""
     parser = argparse.ArgumentParser(
         prog="flitz",
-        description="Fast Location / Indexing / Traversal Zone.",
+        description="flitz - a fast, keyboard-friendly file manager.",
     )
     parser.add_argument(
         "path",

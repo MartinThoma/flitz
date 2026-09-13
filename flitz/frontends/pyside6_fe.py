@@ -1,12 +1,29 @@
 """Implementation of the frontend using PySide6 (Qt)."""
 
 import logging
+import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
-from PySide6.QtCore import QModelIndex, QPoint, QSize, Qt, QTimer
-from PySide6.QtGui import QCursor, QFont, QFontDatabase, QIcon, QKeySequence, QShortcut
+from PySide6.QtCore import (
+    QItemSelectionModel,
+    QMimeDatabase,
+    QModelIndex,
+    QPoint,
+    QSize,
+    Qt,
+    QTimer,
+)
+from PySide6.QtGui import (
+    QCursor,
+    QFont,
+    QFontDatabase,
+    QFontMetrics,
+    QIcon,
+    QKeySequence,
+    QShortcut,
+)
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -23,11 +40,12 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMenu,
     QMessageBox,
-    QPushButton,
     QSplitter,
+    QStatusBar,
     QStyle,
     QTableWidget,
     QTableWidgetItem,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -38,18 +56,35 @@ from flitz.context_menu import ContextMenuItem
 from flitz.events import current_path_changed, display_mode_changed
 from flitz.file_systems import File, Folder
 from flitz.frontends.base import ContextMenuWidget, FeEvent, Frontend
-from flitz.utils import open_file
+from flitz.frontends.pyside6_style import make_stylesheet
+from flitz.utils import format_size, open_file
 
 logger = logging.getLogger(__name__)
-
-STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 # (header label, attribute of File/Folder used for sorting)
 DETAILS_COLUMNS = [
     ("Name", "name"),
-    ("Last Modification", "last_modified_at"),
     ("Size", "file_size"),
+    ("Type", "type"),
+    ("Modified", "last_modified_at"),
 ]
+NAME_COLUMN, SIZE_COLUMN, TYPE_COLUMN, MODIFIED_COLUMN = range(len(DETAILS_COLUMNS))
+
+SIDEBAR_WIDTH = 210
+
+# Icon themes to use if the platform doesn't set one (e.g. without a desktop)
+FALLBACK_ICON_THEMES = ["Yaru", "breeze", "Adwaita"]
+
+# Freedesktop icon names for the bookmarks in the sidebar
+BOOKMARK_ICONS = {
+    "Home": ("user-home", QStyle.StandardPixmap.SP_DirHomeIcon),
+    "Desktop": ("user-desktop", QStyle.StandardPixmap.SP_DesktopIcon),
+    "Downloads": ("folder-download", QStyle.StandardPixmap.SP_DirIcon),
+    "Documents": ("folder-documents", QStyle.StandardPixmap.SP_DirIcon),
+    "Music": ("folder-music", QStyle.StandardPixmap.SP_DirIcon),
+    "Pictures": ("folder-pictures", QStyle.StandardPixmap.SP_DirIcon),
+    "Videos": ("folder-videos", QStyle.StandardPixmap.SP_DirIcon),
+}
 
 # Tk key names which differ from the Qt key names
 TK_TO_QT_KEYS = {
@@ -113,48 +148,70 @@ class PySide6Frontend(Frontend):
     def __init__(self, cfg: Config) -> None:
         self.cfg = cfg
         self.qapp = cast("QApplication", QApplication.instance() or QApplication([]))
+        self.qapp.setStyle("Fusion")  # looks the same on all platforms
+        self.set_fallback_icon_theme()
+
         self.window = QMainWindow()
+        self.window.setMinimumSize(640, 400)
 
         self.central_widget = QWidget()
         self.central_layout = QVBoxLayout()
         self.central_layout.setContentsMargins(0, 0, 0, 0)
+        self.central_layout.setSpacing(0)
         self.central_widget.setLayout(self.central_layout)
         self.window.setCentralWidget(self.central_widget)
 
         # Navigation pane (left) and details pane (right)
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.splitter.setHandleWidth(1)
+        self.splitter.setChildrenCollapsible(False)
         self.central_layout.addWidget(self.splitter, stretch=1)
+
+        self.status_label = QLabel()
+        status_bar = QStatusBar()
+        status_bar.setSizeGripEnabled(False)
+        status_bar.addWidget(self.status_label)
+        self.window.setStatusBar(status_bar)
 
         self.shortcuts: list[QShortcut] = []
         self.context_menu_callback: Callable[[FeEvent], None] | None = None
         self.details_entries: list[File | Folder] = []
+        # (file system, path, display mode) of the shown entries
+        self.details_location: tuple[str, str, str] | None = None
+        self.mime_db = QMimeDatabase()
+        self.file_type_cache: dict[str, tuple[str, QIcon]] = {}
 
-        self.apply_style()
+        self.window.setStyleSheet(make_stylesheet(cfg))
         self.update_font_size(cfg.font, cfg.font_size, cfg.background_color)
 
     def bind_app(self, app: FileExplorer) -> None:
         """Bind the application to the frontend."""
         self.app = app
 
-    def apply_style(self) -> None:
-        """Apply the colors of the configuration."""
-        cfg = self.cfg
-        self.window.setStyleSheet(
-            f"""
-            QTableWidget, QListWidget {{
-                background-color: {cfg.background_color};
-                color: {cfg.text_color};
-                selection-background-color: {cfg.selection.background_color};
-                selection-color: {cfg.selection.text_color};
-            }}
-            #url_pane {{
-                background-color: {cfg.menu.background_color};
-            }}
-            #url_pane QLabel {{
-                color: {cfg.menu.text_color};
-            }}
-            """,
+    @staticmethod
+    def set_fallback_icon_theme() -> None:
+        """Use an installed icon theme if the platform doesn't provide one."""
+        if QIcon.themeName():
+            return
+        # Freedesktop icon directories, which e.g. the offscreen platform lacks
+        data_dirs = os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share"
+        icon_dirs = [
+            str(Path.home() / ".icons"),
+            str(Path.home() / ".local/share/icons"),
+            *(str(Path(d) / "icons") for d in data_dirs.split(":") if d),
+        ]
+        search_paths = QIcon.themeSearchPaths()
+        QIcon.setThemeSearchPaths(
+            search_paths + [d for d in icon_dirs if d not in search_paths],
         )
+        for theme in FALLBACK_ICON_THEMES:
+            if any((Path(p) / theme).is_dir() for p in QIcon.themeSearchPaths()):
+                QIcon.setThemeName(theme)
+                return
+
+    def theme_icon(self, name: str, fallback: QStyle.StandardPixmap) -> QIcon:
+        """Get an icon of the icon theme, or a built-in icon of Qt."""
+        return QIcon.fromTheme(name, self.window.style().standardIcon(fallback))
 
     def mainloop(self) -> None:
         """Start the main loop of the frontend."""
@@ -203,9 +260,16 @@ class PySide6Frontend(Frontend):
             qfont.setFamily(font)
         qfont.setPointSize(font_size)
         self.window.setFont(qfont)
+
+        line_height = QFontMetrics(qfont).height()
+        icon_size = QSize(line_height, line_height)
         if hasattr(self, "details_table"):
-            header = self.details_table.verticalHeader()
-            header.setDefaultSectionSize(int(font_size * 2.5))
+            self.details_table.verticalHeader().setDefaultSectionSize(
+                round(line_height * 1.5),
+            )
+            self.details_table.setIconSize(icon_size)
+        if hasattr(self, "bookmarks_list"):
+            self.bookmarks_list.setIconSize(icon_size)
 
     def make_textinput_message(
         self,
@@ -240,11 +304,16 @@ class PySide6Frontend(Frontend):
         """Show the properties of the selected file(s) and wait until closed."""
         dialog = QDialog(self.window)
         dialog.setWindowTitle("Properties")
+        dialog.setMinimumWidth(360)
         layout = QFormLayout(dialog)
-        layout.addRow("Name:", QLabel(file_name))
-        layout.addRow("Type:", QLabel(file_type))
-        layout.addRow("Size:", QLabel(f"{file_size} bytes"))
-        layout.addRow("Date Modified:", QLabel(date_modified))
+        layout.setContentsMargins(20, 20, 20, 16)
+        layout.setVerticalSpacing(10)
+        layout.setHorizontalSpacing(16)
+        if file_name:
+            layout.addRow("Name:", QLabel(file_name))
+        layout.addRow("Contents:", QLabel(file_type))
+        layout.addRow("Size:", QLabel(f"{format_size(file_size)}"))
+        layout.addRow("Modified:", QLabel(date_modified))
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
         buttons.rejected.connect(dialog.reject)
         layout.addRow(buttons)
@@ -253,7 +322,7 @@ class PySide6Frontend(Frontend):
     def make_context_menu(
         self,
         items: list[ContextMenuItem],
-        selected_files: list[str],
+        selected_files: list[Path],
     ) -> ContextMenuWidget:
         """Create a context menu with the given items."""
         menu = QMenu(self.window)
@@ -267,30 +336,58 @@ class PySide6Frontend(Frontend):
 
     def create_url_pane_widget(self, up_path: Path) -> None:
         """Create the URL pane widget."""
-        url_pane = QWidget()
-        url_pane.setObjectName("url_pane")
-        url_pane.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
-        url_layout = QHBoxLayout()
-        url_pane.setLayout(url_layout)
+        toolbar = QWidget()
+        toolbar.setObjectName("toolbar")
+        toolbar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        layout = QHBoxLayout(toolbar)
+        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setSpacing(8)
 
-        up_button = QPushButton()
-        up_button.setIcon(QIcon(str(up_path)))
-        up_button.setIconSize(QSize(24, 24))
+        keys = self.cfg.keybindings
+        up_button = self.make_toolbar_button(
+            QIcon.fromTheme("go-up", QIcon(str(up_path))),
+            "Go to the parent folder",
+            keys.go_up,
+        )
         up_button.clicked.connect(lambda _checked=False: self.app.go_up())
-        url_layout.addWidget(up_button)
+        layout.addWidget(up_button)
 
-        self.url_bar_label = QLabel("Location:")
-        url_layout.addWidget(self.url_bar_label)
+        refresh_button = self.make_toolbar_button(
+            self.theme_icon("view-refresh", QStyle.StandardPixmap.SP_BrowserReload),
+            "Refresh",
+            keys.refresh,
+        )
+        refresh_button.clicked.connect(lambda _checked=False: self.app.refresh())
+        layout.addWidget(refresh_button)
+
+        self.url_bar_label = QLabel()
+        self.url_bar_label.setObjectName("location_label")
+        self.url_bar_label.hide()
+        layout.addWidget(self.url_bar_label)
 
         self.url_bar = QLineEdit()
+        self.url_bar.setObjectName("location_bar")
+        self.url_bar.setPlaceholderText("Enter a path")
         self.url_bar.returnPressed.connect(self.on_url_bar_submit)
-        url_layout.addWidget(self.url_bar, stretch=1)
+        layout.addWidget(self.url_bar, stretch=1)
 
-        self.central_layout.insertWidget(0, url_pane)
+        self.central_layout.insertWidget(0, toolbar)
 
         self.url_pane_widget_refresh()
         current_path_changed.consumed_by(self.url_pane_widget_refresh)
         display_mode_changed.consumed_by(self.url_pane_label_refresh)
+
+    @staticmethod
+    def make_toolbar_button(icon: QIcon, description: str, keys: str) -> QToolButton:
+        """Create a button for the toolbar; the tooltip shows the shortcut."""
+        button = QToolButton()
+        button.setIcon(icon)
+        shortcut = QKeySequence(tk_to_qt_key_sequence(keys)).toString(
+            QKeySequence.SequenceFormat.NativeText,
+        )
+        button.setToolTip(f"{description} ({shortcut})" if shortcut else description)
+        button.setAutoRaise(True)
+        return button
 
     def on_url_bar_submit(self) -> None:
         """Navigate to the path entered in the URL bar."""
@@ -303,11 +400,14 @@ class PySide6Frontend(Frontend):
     def url_pane_label_refresh(self) -> None:
         """Refresh the URL bar label."""
         if self.app.display_mode == "LIST_VIEW":
-            self.url_bar_label.setText("Location:")
+            self.url_bar_label.hide()
         elif self.app.display_mode == "SEARCH_VIEW":
-            self.url_bar_label.setText("Search:")
+            self.url_bar_label.setText("Search results in")
+            self.url_bar_label.show()
         else:
             self.url_bar_label.setText(f"UNKNOWN: {self.app.display_mode}")
+            self.url_bar_label.show()
+        self.update_status_bar()
 
     def url_pane_widget_refresh(self) -> None:
         """Refresh the URL bar."""
@@ -316,8 +416,18 @@ class PySide6Frontend(Frontend):
     def create_navigation_pane_widget(self) -> None:
         """Create the navigation pane widget."""
         self.bookmarks_list = QListWidget()
+        self.bookmarks_list.setObjectName("sidebar")
+        self.bookmarks_list.setMinimumWidth(150)
+        self.bookmarks_list.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff,
+        )
         self.bookmarks_list.itemClicked.connect(self.on_navigation_item_clicked)
         self.splitter.addWidget(self.bookmarks_list)
+        self.update_font_size(
+            self.cfg.font,
+            self.cfg.font_size,
+            self.cfg.background_color,
+        )
 
     def on_navigation_item_clicked(self, item: QListWidgetItem) -> None:
         """Navigate to the clicked bookmark or file system."""
@@ -333,47 +443,87 @@ class PySide6Frontend(Frontend):
 
     def navigation_pane_update(self) -> None:
         """Update the navigation pane."""
-        self.bookmarks_list.clear()
+        sidebar = self.bookmarks_list
+        sidebar.clear()
 
         def add_heading(text: str) -> None:
-            item = QListWidgetItem(text)
-            font = QFont(self.bookmarks_list.font())
+            item = QListWidgetItem(text.upper())
+            font = QFont(sidebar.font())
             font.setBold(True)
+            font.setPointSizeF(font.pointSizeF() * 0.8)
             item.setFont(font)
             item.setFlags(Qt.ItemFlag.NoItemFlags)
-            self.bookmarks_list.addItem(item)
+            if sidebar.count():  # some space before the next group
+                item.setSizeHint(QSize(0, QFontMetrics(font).height() * 3))
+            sidebar.addItem(item)
 
-        add_heading("Computer")
+        add_heading("Places")
         for bookmark, path_str in self.app.bookmarks.items():
-            item = QListWidgetItem(bookmark)
+            icon_name, fallback = BOOKMARK_ICONS.get(
+                bookmark,
+                ("folder", QStyle.StandardPixmap.SP_DirIcon),
+            )
+            item = QListWidgetItem(self.theme_icon(icon_name, fallback), bookmark)
             item.setData(Qt.ItemDataRole.UserRole, (None, path_str))
-            self.bookmarks_list.addItem(item)
+            item.setToolTip(path_str)
+            sidebar.addItem(item)
             if Path(path_str) == Path(self.app.current_path):
                 item.setSelected(True)
 
-        add_heading("File systems")
-        for fs_name in self.app.file_systems:
-            item = QListWidgetItem(f"FS:{fs_name}")
+        add_heading("File Systems")
+        for fs_name, fs in self.app.file_systems.items():
+            if getattr(fs, "type", "local") == "local":
+                icon = self.theme_icon(
+                    "drive-harddisk",
+                    QStyle.StandardPixmap.SP_DriveHDIcon,
+                )
+                label = "File System" if fs_name == "/" else fs_name
+            else:
+                icon = self.theme_icon(
+                    "network-server",
+                    QStyle.StandardPixmap.SP_DriveNetIcon,
+                )
+                label = fs_name
+            item = QListWidgetItem(icon, label)
             item.setData(Qt.ItemDataRole.UserRole, (fs_name, "/"))
-            self.bookmarks_list.addItem(item)
+            sidebar.addItem(item)
+
+        self.splitter.setSizes([SIDEBAR_WIDTH, self.window.width() - SIDEBAR_WIDTH])
 
     def create_details_pane_widget(self) -> None:
         """Create the details pane widget."""
         table = QTableWidget()
         self.details_table = table
+        table.setObjectName("details")
         table.setColumnCount(len(DETAILS_COLUMNS))
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.setShowGrid(False)
+        table.setAlternatingRowColors(True)
+        table.setWordWrap(False)
+        table.setTextElideMode(Qt.TextElideMode.ElideMiddle)
         table.verticalHeader().hide()
-        table.verticalHeader().setDefaultSectionSize(int(self.cfg.font_size * 2.5))
+        table.itemSelectionChanged.connect(self.update_status_bar)
 
         header = table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        header.resizeSection(1, 200)
-        header.resizeSection(2, 120)
-        header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft)
+        header.setHighlightSections(False)
+        header.setSortIndicatorShown(True)
+        header.setDefaultAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+        )
+        header.setMinimumSectionSize(60)
+        for col, (label, _) in enumerate(DETAILS_COLUMNS):
+            item = QTableWidgetItem(label)
+            if col == SIZE_COLUMN:
+                item.setTextAlignment(
+                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+                )
+            table.setHorizontalHeaderItem(col, item)
+        header.setSectionResizeMode(NAME_COLUMN, QHeaderView.ResizeMode.Stretch)
+        header.resizeSection(SIZE_COLUMN, 100)
+        header.resizeSection(TYPE_COLUMN, 190)
+        header.resizeSection(MODIFIED_COLUMN, 150)
         header.sectionClicked.connect(self.on_details_header_clicked)
 
         # Double-click or Enter
@@ -382,10 +532,26 @@ class PySide6Frontend(Frontend):
         table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         table.customContextMenuRequested.connect(self.on_details_context_menu)
 
+        # Shown instead of an empty table
+        self.placeholder = QLabel()
+        self.placeholder.setObjectName("placeholder")
+        self.placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.placeholder.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents,
+        )
+        self.placeholder.hide()
+        placeholder_layout = QVBoxLayout(table.viewport())
+        placeholder_layout.addWidget(self.placeholder)
+
         self.splitter.addWidget(table)
         self.splitter.setStretchFactor(1, 1)
-        self.splitter.setSizes([200, self.cfg.window.width - 200])
+        self.splitter.setSizes([SIDEBAR_WIDTH, self.cfg.window.width - SIDEBAR_WIDTH])
 
+        self.update_font_size(
+            self.cfg.font,
+            self.cfg.font_size,
+            self.cfg.background_color,
+        )
         self.update_column_header()
 
     def on_details_header_clicked(self, index: int) -> None:
@@ -428,50 +594,143 @@ class PySide6Frontend(Frontend):
             entries = [e for e in entries if not self.app.fs.is_hidden(str(e.path))]
         self.show_entries(entries, select_item)
 
+    def get_file_type(self, entry: File | Folder) -> tuple[str, QIcon]:
+        """Get a description of the type (e.g. "PDF document") and an icon."""
+        if isinstance(entry, Folder):
+            key = "/"  # not a valid file name, so it can't clash with files
+        else:
+            key = Path(entry.name).suffix.lower() or entry.name
+        if key not in self.file_type_cache:
+            if key == "/":
+                description = "Folder"
+                icon = self.theme_icon("folder", QStyle.StandardPixmap.SP_DirIcon)
+            else:
+                mime = self.mime_db.mimeTypeForFile(
+                    entry.name,
+                    QMimeDatabase.MatchMode.MatchExtension,
+                )
+                comment = mime.comment() or "Document"
+                description = comment[0].upper() + comment[1:]
+                fallback = self.theme_icon(
+                    "text-x-generic",
+                    QStyle.StandardPixmap.SP_FileIcon,
+                )
+                icon = QIcon.fromTheme(
+                    mime.iconName(),
+                    QIcon.fromTheme(mime.genericIconName(), fallback),
+                )
+            self.file_type_cache[key] = (description, icon)
+        return self.file_type_cache[key]
+
     def show_entries(
         self,
         entries: list[File | Folder],
         select_item: Path | None = None,
     ) -> None:
-        """Fill the details pane with the given entries."""
+        """
+        Fill the details pane with the given entries.
+
+        When the same folder is shown again (e.g. after a refresh), the selected
+        entries stay selected. Otherwise select_item or the first entry is
+        selected.
+        """
         table = self.details_table
+        location = (
+            self.app.current_file_system,
+            str(self.app.current_path),
+            self.app.display_mode,
+        )
+        if select_item is not None:
+            keep_selected = {str(Path(select_item))}
+        elif location == self.details_location:
+            keep_selected = set(self.details_pane_get_current_selection())
+        else:
+            keep_selected = set()
+        self.details_location = location
+
         self.details_entries = entries
         table.clearContents()
         table.setRowCount(len(entries))
+        muted_color = table.palette().placeholderText()
+        right_aligned = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
 
-        style = self.window.style()
-        folder_icon = style.standardIcon(QStyle.StandardPixmap.SP_DirIcon)
-        file_icon = style.standardIcon(QStyle.StandardPixmap.SP_FileIcon)
-
-        selected_row = 0
+        selected_rows = []
         for row, entry in enumerate(entries):
-            icon = folder_icon if isinstance(entry, Folder) else file_icon
-            name_item = QTableWidgetItem(icon, entry.name)
-            table.setItem(row, 0, name_item)
+            description, icon = self.get_file_type(entry)
+            table.setItem(row, NAME_COLUMN, QTableWidgetItem(icon, entry.name))
+
+            size = entry.file_size if isinstance(entry, File) else None
+            size_item = QTableWidgetItem("" if size is None else format_size(size))
+            size_item.setTextAlignment(right_aligned)
+            table.setItem(row, SIZE_COLUMN, size_item)
+
+            type_item = QTableWidgetItem(description)
+            type_item.setForeground(muted_color)
+            table.setItem(row, TYPE_COLUMN, type_item)
 
             modified = (
-                entry.last_modified_at.strftime("%Y-%m-%d %H:%M:%S")
+                entry.last_modified_at.strftime("%Y-%m-%d %H:%M")
                 if entry.last_modified_at
                 else ""
             )
-            table.setItem(row, 1, QTableWidgetItem(modified))
+            modified_item = QTableWidgetItem(modified)
+            modified_item.setForeground(muted_color)
+            table.setItem(row, MODIFIED_COLUMN, modified_item)
 
-            size = entry.file_size if isinstance(entry, File) else None
-            size_item = QTableWidgetItem("" if size is None else str(size))
-            size_item.setTextAlignment(
-                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
-            )
-            table.setItem(row, 2, size_item)
-
-            if select_item is not None and Path(entry.path) == Path(select_item):
-                selected_row = row
+            if str(entry.path) in keep_selected:
+                selected_rows.append(row)
 
         if entries:
-            table.selectRow(selected_row)
-            table.scrollTo(table.model().index(selected_row, 0))
+            self.select_rows(selected_rows or [0])
+            self.placeholder.hide()
+        else:
+            searching = self.app.display_mode == "SEARCH_VIEW"
+            self.placeholder.setText("No results" if searching else "Folder is empty")
+            self.placeholder.show()
         table.setFocus()
 
         self.update_column_header()
+        self.update_status_bar()
+
+    def select_rows(self, rows: list[int]) -> None:
+        """Select the given rows of the details pane and show the first one."""
+        table = self.details_table
+        model = table.model()
+        selection_model = table.selectionModel()
+        table.clearSelection()
+        flags = (
+            QItemSelectionModel.SelectionFlag.Select
+            | QItemSelectionModel.SelectionFlag.Rows
+        )
+        for row in rows:
+            selection_model.select(model.index(row, 0), flags)
+        selection_model.setCurrentIndex(
+            model.index(rows[0], 0),
+            QItemSelectionModel.SelectionFlag.NoUpdate,
+        )
+        table.scrollTo(model.index(rows[0], 0))
+
+    def update_status_bar(self) -> None:
+        """Show the number of items and the size of the selection."""
+        if not hasattr(self, "details_table"):
+            return
+        total = len(self.details_entries)
+        noun = "result" if self.app.display_mode == "SEARCH_VIEW" else "item"
+        text = f"{total} {noun}{'' if total == 1 else 's'}"
+
+        selection_model = self.details_table.selectionModel()
+        rows = {index.row() for index in selection_model.selectedRows()}
+        if rows:
+            text = f"{len(rows)} of {text} selected"
+            sizes = [
+                entry.file_size
+                for row in rows
+                if isinstance(entry := self.details_entries[row], File)
+                and entry.file_size is not None
+            ]
+            if sizes:
+                text += f" ({format_size(sum(sizes))})"
+        self.status_label.setText(text)
 
     def details_pane_get_current_selection(self) -> list[str]:
         """Get the current selection in the details pane."""
@@ -489,13 +748,17 @@ class PySide6Frontend(Frontend):
         self.show_entries(self.app.sort_entries(entries))
 
     def update_column_header(self) -> None:
-        """Update the column headers with the sort indicator."""
+        """Show the sort indicator on the column the entries are sorted by."""
         attribute, direction = self.app.sort_order[0]
-        icon_name = "sort-up.png" if direction == "ASC" else "sort-down.png"
-        icon_path = STATIC_DIR / icon_name
-        for col, (label, col_attribute) in enumerate(DETAILS_COLUMNS):
-            if col_attribute == attribute:
-                item = QTableWidgetItem(QIcon(str(icon_path)), label)
-            else:
-                item = QTableWidgetItem(label)
-            self.details_table.setHorizontalHeaderItem(col, item)
+        columns = [col_attribute for _, col_attribute in DETAILS_COLUMNS]
+        if attribute not in columns:
+            return
+        order = (
+            Qt.SortOrder.AscendingOrder
+            if direction == "ASC"
+            else Qt.SortOrder.DescendingOrder
+        )
+        self.details_table.horizontalHeader().setSortIndicator(
+            columns.index(attribute),
+            order,
+        )

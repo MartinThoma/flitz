@@ -1,6 +1,7 @@
 """The ShowProperties MixIn."""
 
 from collections.abc import Iterable
+from pathlib import Path
 from typing import Any
 
 from flitz.file_systems import File, FileSystem
@@ -36,12 +37,13 @@ class ShowProperties:
         selected_item: Iterable[str],
     ) -> None:
 
+        selected_paths = list(selected_item)
         nb_files = 0
         nb_folders = 0
         size_sum = 0
         date_modified_min = None
         date_modified_max = None
-        for file_path in selected_item:
+        for file_path in selected_paths:
             entry = self.fs.get_file_or_folder(file_path)
             if isinstance(entry, File):
                 nb_files += 1
@@ -71,14 +73,20 @@ class ShowProperties:
                     "Error",
                     f"Failed to retrieve properties: {e}",
                 )
+
+        contents = [
+            f"{count} {noun}{'' if count == 1 else 's'}"
+            for count, noun in [(nb_files, "file"), (nb_folders, "folder")]
+            if count
+        ]
+        modified_text = ""
+        if date_modified_min and date_modified_max:
+            modified_text = f"{date_modified_min:%Y-%m-%d %H:%M}"
+            if date_modified_max != date_modified_min:
+                modified_text += f" - {date_modified_max:%Y-%m-%d %H:%M}"
         self.frontend.make_properties_dialog(
-            file_name="",
+            file_name=Path(selected_paths[0]).name if len(selected_paths) == 1 else "",
             file_size=size_sum,
-            file_type=f"({nb_files} files, {nb_folders} folders)",
-            date_modified=(
-                f"{date_modified_min:%Y-%m-%d %H:%M} - "
-                f"{date_modified_max:%Y-%m-%d %H:%M}"
-                if date_modified_min and date_modified_max
-                else ""
-            ),
+            file_type=", ".join(contents),
+            date_modified=modified_text,
         )

@@ -53,6 +53,7 @@ class FileExplorer(
         self.current_path = str(Path(initial_path).resolve())
 
         self.search_mode = False  # Track if search mode is open
+        self.search_term: str | None = None
         self.context_menu: ContextMenuWidget | None = (
             None  # Track if context menu is open
         )
@@ -119,6 +120,7 @@ class FileExplorer(
             self.cfg.keybindings.toggle_hidden_file_visibility,
             self.toggle_hidden_files,
         )
+        self.frontend.bind_keyboard_shortcut(self.cfg.keybindings.refresh, self.refresh)
 
         # This is on purpose not configurable
         self.frontend.bind_keyboard_shortcut("<Control-m>", self.open_settings)
@@ -214,7 +216,10 @@ class FileExplorer(
         if hasattr(self, "context_menu") and self.context_menu:
             self.context_menu.close()
         item_registry = {item.name: item for item in self.registered_context_menu_items}
-        selected_files = self.frontend.details_pane_get_current_selection()
+        # Plugins rely on getting Path objects
+        selected_files = [
+            Path(path) for path in self.frontend.details_pane_get_current_selection()
+        ]
         self.context_menu = self.frontend.make_context_menu(
             [item_registry[item] for item in self.cfg.context_menu],
             selected_files,
@@ -274,11 +279,18 @@ class FileExplorer(
             "Enter search term:",
         )
         if search_term is not None:
-            # Perform search and update Treeview
-            self.search_files(search_term)
-            self.display_mode = "SEARCH_VIEW"
-            display_mode_changed.produce()
             self.search_mode = True
+            self.search_term = search_term
+            self.display_mode = "SEARCH_VIEW"
+            self.search_files(search_term)
+            display_mode_changed.produce()
+
+    def refresh(self, _: FeEvent | None = None) -> None:
+        """Reload the current folder or search results."""
+        if self.search_mode and self.search_term is not None:
+            self.search_files(self.search_term)
+        else:
+            current_folder_changed.produce()
 
     def search_files(self, search_term: str) -> None:
         """Filter and display files in Treeview based on search term."""
