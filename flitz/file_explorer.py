@@ -140,16 +140,21 @@ class FileExplorer(
         """Open the settings of flitz."""
         if not CONFIG_PATH.exists():
             create_settings()
-        open_file(str(CONFIG_PATH))
+        if not open_file(str(CONFIG_PATH)):
+            self.frontend.make_error_message(
+                "Settings",
+                f"Could not open the settings file {CONFIG_PATH}.\n\n"
+                "Open it with a text editor to change the settings.",
+            )
 
     def handle_escape_key(self, event: FeEvent) -> None:
-        """Close the context menu if open or exit search mode."""
-        if hasattr(self, "context_menu"):
-            if self.context_menu:
-                self.context_menu.close()
-            elif self.search_mode:
-                # Deactivate search mode if active
-                self.exit_search_mode(event)
+        """Close the context menu if open and exit the search mode."""
+        # The menu might already be closed, so Escape must not stop here
+        if self.context_menu:
+            self.context_menu.close()
+            self.context_menu = None
+        if self.search_mode:
+            self.exit_search_mode(event)
 
     def load_file_systems(self) -> None:
         """Load file systems from entry points."""
@@ -265,11 +270,12 @@ class FileExplorer(
     def exit_search_mode(self, _: FeEvent) -> None:
         """Exit the search mode."""
         if self.search_mode:
-            # Reload files and clear search mode
-            current_folder_changed.produce()  # a bit of an abuse of the event
-            self.display_mode = "LIST_VIEW"
-            display_mode_changed.produce()
+            self.frontend.stop_search()
             self.search_mode = False
+            self.display_mode = "LIST_VIEW"
+            # Reload files; a bit of an abuse of the event
+            current_folder_changed.produce()
+            display_mode_changed.produce()
 
     def handle_search(self, _: FeEvent) -> None:
         """Handle the search functionality."""
@@ -335,6 +341,11 @@ class FileExplorer(
 
     def set_current_path(self, current_path: str) -> None:
         """Set the current path and update the UI."""
+        if self.search_mode:
+            self.frontend.stop_search()
+            self.search_mode = False
+            self.display_mode = "LIST_VIEW"
+            display_mode_changed.produce()
         self.current_path = str(Path(current_path).resolve())
         current_path_changed.produce()
 

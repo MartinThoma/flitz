@@ -101,6 +101,10 @@ class LocalFileSystem(FileSystem):
         else:
             return Path(path).name.startswith(".")
 
+    def is_symlink(self, path: str) -> bool:
+        """Check if a path is a symbolic link."""
+        return os.path.islink(path)
+
     def get_file_or_folder(self, path: str) -> File | Folder:
         """Get a file or folder."""
         p = Path(path)

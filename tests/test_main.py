@@ -2,10 +2,13 @@
 
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
+from PySide6.QtTest import QTest
 
 from flitz import FileExplorer
 from flitz.frontends.base import FeEvent
@@ -14,7 +17,17 @@ from flitz.frontends.pyside6_fe import (
     PySide6Frontend,
     tk_to_qt_key_sequence,
 )
-from flitz.utils import format_size
+from flitz.utils import format_size, open_file
+
+
+def wait_for_search(app: FileExplorer) -> None:
+    """Wait until the background search is complete and its results are shown."""
+    frontend = app.frontend
+    assert isinstance(frontend, PySide6Frontend)
+    deadline = time.monotonic() + 5
+    while frontend.search_running and time.monotonic() < deadline:
+        QTest.qWait(10)  # process the reports of the search thread
+    assert not frontend.search_running
 
 
 def displayed_names(app: FileExplorer) -> list[str]:
@@ -181,10 +194,131 @@ def test_refresh_in_search_view(file_explorer, folder: Path, monkeypatch):
         lambda *_: "txt",
     )
     file_explorer.handle_search(FeEvent(0, 0))
+    wait_for_search(file_explorer)
     assert displayed_names(file_explorer) == ["a.txt", "big.txt"]
 
     (folder / "sub_b" / "found.txt").write_text("")
     file_explorer.refresh()
 
+    wait_for_search(file_explorer)
     assert displayed_names(file_explorer) == ["a.txt", "big.txt", "found.txt"]
-    assert file_explorer.frontend.status_label.text().startswith("1 of 3 results")
+    assert file_explorer.frontend.status_label.text() == (
+        'Search for "txt": 1 of 3 results selected (1 byte)'
+    )
+
+
+def test_search_runs_in_background(file_explorer, monkeypatch):
+    """The window stays responsive and shows progress while searching."""
+    frontend = file_explorer.frontend
+    release = threading.Event()
+    list_contents = file_explorer.fs.list_contents
+
+    def slow_list_contents(path, recursive=False):
+        release.wait(5)
+        return list_contents(path, recursive)
+
+    monkeypatch.setattr(file_explorer.fs, "list_contents", slow_list_contents)
+    monkeypatch.setattr(frontend, "make_textinput_message", lambda *_: "txt")
+
+    file_explorer.handle_search(FeEvent(0, 0))
+
+    # handle_search returned although the search can't progress yet
+    assert frontend.search_running
+    assert not frontend.search_progress.isHidden()
+    assert not frontend.stop_search_button.isHidden()
+    assert frontend.placeholder.text() == "Searching…"
+    assert frontend.status_label.text().startswith('Searching for "txt"… 0 results')
+
+    release.set()
+    wait_for_search(file_explorer)
+    assert displayed_names(file_explorer) == ["a.txt", "big.txt"]
+    assert frontend.search_progress.isHidden()
+    assert frontend.stop_search_button.isHidden()
+
+
+def test_stop_search_keeps_results(file_explorer, folder: Path, monkeypatch):
+    """Stopping keeps the results found so far."""
+    frontend = file_explorer.frontend
+    list_contents = file_explorer.fs.list_contents
+    first_folder_done = threading.Event()
+    release = threading.Event()
+
+    def list_contents_blocking_in_subfolders(path, recursive=False):
+        if path != str(folder):
+            first_folder_done.set()
+            release.wait(5)
+        return list_contents(path, recursive)
+
+    monkeypatch.setattr(
+        file_explorer.fs,
+        "list_contents",
+        list_contents_blocking_in_subfolders,
+    )
+    (folder / "sub_b" / "deep.txt").write_text("")
+    monkeypatch.setattr(frontend, "make_textinput_message", lambda *_: "txt")
+
+    file_explorer.handle_search(FeEvent(0, 0))
+    assert first_folder_done.wait(5)
+    frontend.stop_search_button.click()
+    release.set()
+    wait_for_search(file_explorer)
+
+    assert "deep.txt" not in displayed_names(file_explorer)
+    assert displayed_names(file_explorer) == ["a.txt", "big.txt"]
+    assert frontend.status_label.text().startswith('Search for "txt" stopped:')
+    assert file_explorer.search_mode
+
+
+def test_escape_cancels_search(file_explorer, monkeypatch):
+    """Escape stops the search and shows the folder again."""
+    frontend = file_explorer.frontend
+    release = threading.Event()
+    list_contents = file_explorer.fs.list_contents
+
+    def slow_list_contents(path, recursive=False):
+        release.wait(0.2)
+        return list_contents(path, recursive)
+
+    monkeypatch.setattr(file_explorer.fs, "list_contents", slow_list_contents)
+    monkeypatch.setattr(frontend, "make_textinput_message", lambda *_: "txt")
+    file_explorer.handle_search(FeEvent(0, 0))
+
+    file_explorer.handle_escape_key(FeEvent(0, 0))
+
+    assert not frontend.search_running
+    assert frontend.search_thread is None
+    assert not file_explorer.search_mode
+    assert displayed_names(file_explorer) == ["Sub_a", "sub_b", "a.txt", "big.txt"]
+    QTest.qWait(300)  # late reports of the stopped search are ignored
+    assert displayed_names(file_explorer) == ["Sub_a", "sub_b", "a.txt", "big.txt"]
+
+
+def test_open_settings_reports_failure(file_explorer, monkeypatch):
+    """If the settings can't be opened, the user is told where they are."""
+    messages = []
+    monkeypatch.setattr("flitz.file_explorer.open_file", lambda _: False)
+    monkeypatch.setattr("flitz.file_explorer.CONFIG_PATH", Path(__file__))
+    monkeypatch.setattr(
+        file_explorer.frontend,
+        "make_error_message",
+        lambda _title, message: messages.append(message),
+    )
+
+    file_explorer.open_settings(FeEvent(0, 0))
+
+    assert len(messages) == 1
+    assert str(Path(__file__)) in messages[0]
+
+
+def test_open_file_does_not_pass_electron_node_mode(monkeypatch):
+    """Editors like VS Code must start normally when flitz runs inside VS Code."""
+    calls = []
+    monkeypatch.setenv("ELECTRON_RUN_AS_NODE", "1")
+    monkeypatch.setattr("flitz.utils.platform.system", lambda: "Linux")
+    monkeypatch.setattr(
+        "flitz.utils.subprocess.run",
+        lambda _args, **kwargs: calls.append(kwargs["env"]) or Mock(returncode=0),
+    )
+
+    assert open_file("settings.yml")
+    assert "ELECTRON_RUN_AS_NODE" not in calls[0]

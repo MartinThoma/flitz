@@ -2,6 +2,7 @@
 
 import logging
 import os
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import cast
@@ -10,10 +11,14 @@ from PySide6.QtCore import (
     QItemSelectionModel,
     QMimeDatabase,
     QModelIndex,
+    QObject,
     QPoint,
     QSize,
     Qt,
+    QThread,
     QTimer,
+    Signal,
+    Slot,
 )
 from PySide6.QtGui import (
     QCursor,
@@ -41,6 +46,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMenu,
     QMessageBox,
+    QProgressBar,
     QSplitter,
     QStatusBar,
     QStyle,
@@ -58,6 +64,7 @@ from flitz.events import current_path_changed, display_mode_changed
 from flitz.file_systems import File, Folder
 from flitz.frontends.base import ContextMenuWidget, FeEvent, Frontend
 from flitz.frontends.pyside6_style import make_stylesheet
+from flitz.search import Search
 from flitz.utils import format_size, open_file
 
 logger = logging.getLogger(__name__)
@@ -144,6 +151,73 @@ class ContextMenuWidgetQt(ContextMenuWidget):
         self.menu.close()
 
 
+class SearchThread(QThread):
+    """Run a search in the background and report the matches in batches."""
+
+    found = Signal(list)
+    progress = Signal(int)
+
+    # Report at most every REPORT_INTERVAL seconds, so the GUI stays responsive
+    REPORT_INTERVAL = 0.1
+
+    def __init__(self, search: Search) -> None:
+        super().__init__()
+        self.search = search
+
+    def run(self) -> None:
+        """Search; runs in the background thread."""
+        batch: list[File | Folder] = []
+        last_report = time.monotonic()
+        for matches in self.search.batches():
+            batch.extend(matches)
+            if time.monotonic() - last_report >= self.REPORT_INTERVAL:
+                self.report(batch)
+                batch = []
+                last_report = time.monotonic()
+        self.report(batch)
+
+    def report(self, batch: list[File | Folder]) -> None:
+        """Send the new matches and the progress to the GUI thread."""
+        if batch:
+            self.found.emit(batch)
+        self.progress.emit(self.search.folders_scanned)
+
+
+class SearchReceiver(QObject):
+    """
+    Receive the reports of the current SearchThread in the GUI thread.
+
+    Reports of an older search, which was replaced or stopped, are ignored.
+    """
+
+    def __init__(self, frontend: "PySide6Frontend") -> None:
+        super().__init__()
+        self.frontend = frontend
+
+    def is_current(self) -> bool:
+        """Whether the report comes from the current search."""
+        thread = self.frontend.search_thread
+        return thread is not None and self.sender() is thread
+
+    @Slot(list)
+    def on_found(self, batch: list[File | Folder]) -> None:
+        """Show new matches."""
+        if self.is_current():
+            self.frontend.add_search_results(batch)
+
+    @Slot(int)
+    def on_progress(self, _folders_scanned: int) -> None:
+        """Show the progress."""
+        if self.is_current():
+            self.frontend.update_status_bar()
+
+    @Slot()
+    def on_finished(self) -> None:
+        """Show the complete results."""
+        if self.is_current():
+            self.frontend.finish_search()
+
+
 class PySide6Frontend(Frontend):
     """The frontend using PySide6."""
 
@@ -175,11 +249,17 @@ class PySide6Frontend(Frontend):
         self.splitter.setChildrenCollapsible(False)
         self.central_layout.addWidget(self.splitter, stretch=1)
 
-        self.status_label = QLabel()
-        status_bar = QStatusBar()
-        status_bar.setSizeGripEnabled(False)
-        status_bar.addWidget(self.status_label)
-        self.window.setStatusBar(status_bar)
+        self.create_status_bar()
+
+        self.search: Search | None = None
+        self.search_thread: SearchThread | None = None
+        self.search_running = False
+        self.search_keep_selected: set[str] = set()
+        # Whether the selection was made by flitz, not by the user
+        self.selection_is_automatic = False
+        self.selecting_rows = False
+        self.search_receiver = SearchReceiver(self)
+        self.qapp.aboutToQuit.connect(self.stop_search)
 
         self.shortcuts: list[QShortcut] = []
         self.context_menu_callback: Callable[[FeEvent], None] | None = None
@@ -191,6 +271,26 @@ class PySide6Frontend(Frontend):
 
         self.window.setStyleSheet(make_stylesheet(cfg))
         self.update_font_size(cfg.font, cfg.font_size, cfg.background_color)
+
+    def create_status_bar(self) -> None:
+        """Create the status bar with the progress of searches."""
+        self.status_label = QLabel()
+        status_bar = QStatusBar()
+        status_bar.setSizeGripEnabled(False)
+        status_bar.addWidget(self.status_label, stretch=1)
+        self.search_progress = QProgressBar()
+        self.search_progress.setRange(0, 0)  # busy indicator
+        self.search_progress.setTextVisible(False)
+        self.search_progress.setFixedWidth(120)
+        self.search_progress.hide()
+        status_bar.addPermanentWidget(self.search_progress)
+        self.stop_search_button = QToolButton()
+        self.stop_search_button.setText("Stop")
+        self.stop_search_button.setToolTip("Stop the search and keep the results")
+        self.stop_search_button.clicked.connect(self.on_stop_search_clicked)
+        self.stop_search_button.hide()
+        status_bar.addPermanentWidget(self.stop_search_button)
+        self.window.setStatusBar(status_bar)
 
     def bind_app(self, app: FileExplorer) -> None:
         """Bind the application to the frontend."""
@@ -527,7 +627,7 @@ class PySide6Frontend(Frontend):
         table.setWordWrap(False)
         table.setTextElideMode(Qt.TextElideMode.ElideMiddle)
         table.verticalHeader().hide()
-        table.itemSelectionChanged.connect(self.update_status_bar)
+        table.itemSelectionChanged.connect(self.on_selection_changed)
 
         header = table.horizontalHeader()
         header.setHighlightSections(False)
@@ -591,8 +691,8 @@ class PySide6Frontend(Frontend):
         if isinstance(entry, Folder):
             # Navigating refills the table, so don't do it while handling the event
             QTimer.singleShot(0, lambda: self.navigate_to_folder(entry.path))
-        else:
-            open_file(entry.path)
+        elif not open_file(entry.path):
+            self.make_error_message("Error", f"Could not open {entry.name}.")
 
     def navigate_to_folder(self, path: str) -> None:
         """Show the contents of the given folder."""
@@ -613,6 +713,7 @@ class PySide6Frontend(Frontend):
         select_item: Path | None = None,
     ) -> None:
         """Set the contents of the details pane."""
+        self.stop_search()
         if not self.cfg.show_hidden_files:
             entries = [e for e in entries if not self.app.fs.is_hidden(str(e.path))]
         self.show_entries(entries, select_item)
@@ -674,32 +775,10 @@ class PySide6Frontend(Frontend):
         self.details_entries = entries
         table.clearContents()
         table.setRowCount(len(entries))
-        muted_color = table.palette().placeholderText()
-        right_aligned = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
 
         selected_rows = []
         for row, entry in enumerate(entries):
-            description, icon = self.get_file_type(entry)
-            table.setItem(row, NAME_COLUMN, QTableWidgetItem(icon, entry.name))
-
-            size = entry.file_size if isinstance(entry, File) else None
-            size_item = QTableWidgetItem("" if size is None else format_size(size))
-            size_item.setTextAlignment(right_aligned)
-            table.setItem(row, SIZE_COLUMN, size_item)
-
-            type_item = QTableWidgetItem(description)
-            type_item.setForeground(muted_color)
-            table.setItem(row, TYPE_COLUMN, type_item)
-
-            modified = (
-                entry.last_modified_at.strftime("%Y-%m-%d %H:%M")
-                if entry.last_modified_at
-                else ""
-            )
-            modified_item = QTableWidgetItem(modified)
-            modified_item.setForeground(muted_color)
-            table.setItem(row, MODIFIED_COLUMN, modified_item)
-
+            self.fill_row(row, entry)
             if str(entry.path) in keep_selected:
                 selected_rows.append(row)
 
@@ -707,38 +786,83 @@ class PySide6Frontend(Frontend):
             self.select_rows(selected_rows or [0])
             self.placeholder.hide()
         else:
-            searching = self.app.display_mode == "SEARCH_VIEW"
-            self.placeholder.setText("No results" if searching else "Folder is empty")
+            if self.app.display_mode != "SEARCH_VIEW":
+                self.placeholder.setText("Folder is empty")
+            elif self.search_running:
+                self.placeholder.setText("Searching…")
+            else:
+                self.placeholder.setText("No results")
             self.placeholder.show()
         table.setFocus()
 
         self.update_column_header()
         self.update_status_bar()
 
+    def fill_row(self, row: int, entry: File | Folder) -> None:
+        """Show an entry in the given row of the details pane."""
+        table = self.details_table
+        muted_color = table.palette().placeholderText()
+
+        description, icon = self.get_file_type(entry)
+        name_item = QTableWidgetItem(icon, entry.name)
+        name_item.setToolTip(str(entry.path))  # e.g. the folder of a search result
+        table.setItem(row, NAME_COLUMN, name_item)
+
+        size = entry.file_size if isinstance(entry, File) else None
+        size_item = QTableWidgetItem("" if size is None else format_size(size))
+        size_item.setTextAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+        )
+        table.setItem(row, SIZE_COLUMN, size_item)
+
+        type_item = QTableWidgetItem(description)
+        type_item.setForeground(muted_color)
+        table.setItem(row, TYPE_COLUMN, type_item)
+
+        modified = (
+            entry.last_modified_at.strftime("%Y-%m-%d %H:%M")
+            if entry.last_modified_at
+            else ""
+        )
+        modified_item = QTableWidgetItem(modified)
+        modified_item.setForeground(muted_color)
+        table.setItem(row, MODIFIED_COLUMN, modified_item)
+
     def select_rows(self, rows: list[int]) -> None:
         """Select the given rows of the details pane and show the first one."""
         table = self.details_table
         model = table.model()
         selection_model = table.selectionModel()
-        table.clearSelection()
-        flags = (
-            QItemSelectionModel.SelectionFlag.Select
-            | QItemSelectionModel.SelectionFlag.Rows
-        )
-        for row in rows:
-            selection_model.select(model.index(row, 0), flags)
-        selection_model.setCurrentIndex(
-            model.index(rows[0], 0),
-            QItemSelectionModel.SelectionFlag.NoUpdate,
-        )
+        self.selecting_rows = True
+        try:
+            table.clearSelection()
+            flags = (
+                QItemSelectionModel.SelectionFlag.Select
+                | QItemSelectionModel.SelectionFlag.Rows
+            )
+            for row in rows:
+                selection_model.select(model.index(row, 0), flags)
+            selection_model.setCurrentIndex(
+                model.index(rows[0], 0),
+                QItemSelectionModel.SelectionFlag.NoUpdate,
+            )
+        finally:
+            self.selecting_rows = False
         table.scrollTo(model.index(rows[0], 0))
+
+    def on_selection_changed(self) -> None:
+        """Remember that the user selected something and update the status bar."""
+        if not self.selecting_rows:
+            self.selection_is_automatic = False
+        self.update_status_bar()
 
     def update_status_bar(self) -> None:
         """Show the number of items and the size of the selection."""
         if not hasattr(self, "details_table"):
             return
         total = len(self.details_entries)
-        noun = "result" if self.app.display_mode == "SEARCH_VIEW" else "item"
+        searching = self.app.display_mode == "SEARCH_VIEW" and self.search is not None
+        noun = "result" if searching else "item"
         text = f"{total} {noun}{'' if total == 1 else 's'}"
 
         selection_model = self.details_table.selectionModel()
@@ -753,6 +877,17 @@ class PySide6Frontend(Frontend):
             ]
             if sizes:
                 text += f" ({format_size(sum(sizes))})"
+
+        if searching and self.search is not None:
+            term = self.search.search_term
+            scanned = self.search.folders_scanned
+            folders = f"{scanned} folder{'' if scanned == 1 else 's'} searched"
+            if self.search_running:
+                text = f'Searching for "{term}"… {text} · {folders}'
+            elif self.search.is_stopped:
+                text = f'Search for "{term}" stopped: {text} · {folders}'
+            else:
+                text = f'Search for "{term}": {text}'
         self.status_label.setText(text)
 
     def details_pane_get_current_selection(self) -> list[str]:
@@ -762,13 +897,93 @@ class PySide6Frontend(Frontend):
         return [str(self.details_entries[row].path) for row in rows]
 
     def make_search_view(self, path: str, search_term: str) -> None:
-        """Create the search view."""
-        entries = [
-            entry
-            for entry in self.app.fs.list_contents(path, recursive=True)
-            if search_term.lower() in entry.name.lower()
-        ]
-        self.show_entries(self.app.sort_entries(entries))
+        """
+        Search in the background and show the matches while they are found.
+
+        The results are sorted when the search is complete.
+        """
+        self.stop_search()
+        # Refreshing the same search keeps the selected results selected
+        is_same_search = (
+            self.search is not None
+            and self.search.path == path
+            and self.search.search_term == search_term
+            and self.details_location is not None
+            and self.details_location[2] == "SEARCH_VIEW"
+        )
+        self.search_keep_selected = (
+            set(self.details_pane_get_current_selection()) if is_same_search else set()
+        )
+        self.search = Search(
+            self.app.fs,
+            path,
+            search_term,
+            include_hidden=self.cfg.show_hidden_files,
+        )
+        thread = SearchThread(self.search)
+        thread.found.connect(self.search_receiver.on_found)
+        thread.progress.connect(self.search_receiver.on_progress)
+        thread.finished.connect(self.search_receiver.on_finished)
+        self.search_thread = thread
+        self.set_search_running(True)
+        self.show_entries([])
+        thread.start()
+
+    def add_search_results(self, entries: list[File | Folder]) -> None:
+        """Append new matches of the running search."""
+        table = self.details_table
+        start = table.rowCount()
+        self.details_entries.extend(entries)
+        table.setRowCount(start + len(entries))
+        for offset, entry in enumerate(entries):
+            self.fill_row(start + offset, entry)
+        keep = self.search_keep_selected
+        if any(str(entry.path) in keep for entry in entries):
+            rows = [
+                row
+                for row, entry in enumerate(self.details_entries)
+                if str(entry.path) in keep
+            ]
+            self.select_rows(rows)
+        elif start == 0:
+            self.select_rows([0])
+            self.selection_is_automatic = True
+        self.placeholder.hide()
+        self.update_status_bar()
+
+    def finish_search(self) -> None:
+        """Show the sorted results once the search is complete or stopped."""
+        self.search_thread = None
+        self.set_search_running(False)
+        entries = self.app.sort_entries(self.details_entries)
+        # Unless the user selected something, select the first sorted result
+        first = None
+        if entries and self.selection_is_automatic:
+            first = Path(entries[0].path)
+        self.show_entries(entries, select_item=first)
+
+    def on_stop_search_clicked(self) -> None:
+        """Stop the search, but keep showing the results found so far."""
+        if self.search is not None:
+            self.search.stop()
+
+    def stop_search(self) -> None:
+        """Stop a running search; return once it no longer uses the file system."""
+        thread = self.search_thread
+        if thread is None:
+            return
+        # Ignore reports of the thread from now on
+        self.search_thread = None
+        if self.search is not None:
+            self.search.stop()
+        thread.wait()
+        self.set_search_running(False)
+
+    def set_search_running(self, running: bool) -> None:
+        """Show or hide the progress of the search."""
+        self.search_running = running
+        self.search_progress.setVisible(running)
+        self.stop_search_button.setVisible(running)
 
     def update_column_header(self) -> None:
         """Show the sort indicator on the column the entries are sorted by."""

@@ -1,6 +1,7 @@
 """Utility functions."""
 
 import logging
+import os
 import platform
 import subprocess
 
@@ -9,22 +10,44 @@ from flitz.file_systems import File, Folder
 logger = logging.getLogger(__name__)
 
 
-def open_file(file_path: str) -> None:
-    """Open a file."""
-    system = platform.system().lower()
+# Set by processes started from Electron apps like VS Code. Passed on, the
+# opened application (e.g. VS Code itself) runs as Node.js instead of starting.
+ENV_VARIABLES_NOT_PASSED_ON = ("ELECTRON_RUN_AS_NODE", "ELECTRON_NO_ATTACH_CONSOLE")
 
-    if system == "darwin":  # MacOS
-        subprocess.run(["open", file_path], check=False)  # noqa: S603, S607
-    elif system == "linux":  # Linux
-        subprocess.run(["xdg-open", file_path], check=False)  # noqa: S603, S607
-    elif system == "windows":  # Windows
-        subprocess.run(  # noqa: S602
-            ["start", file_path],  # noqa: S607
-            shell=True,
-            check=False,
-        )
-    else:
-        logger.info("Unsupported operating system")
+
+def open_file(file_path: str) -> bool:
+    """
+    Open a file with the default application.
+
+    Returns:
+        False if the file could not be opened.
+    """
+    system = platform.system().lower()
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in ENV_VARIABLES_NOT_PASSED_ON
+    }
+
+    try:
+        if system == "darwin":  # MacOS
+            result = subprocess.run(["open", file_path], check=False, env=env)  # noqa: S603, S607
+        elif system == "linux":  # Linux
+            result = subprocess.run(["xdg-open", file_path], check=False, env=env)  # noqa: S603, S607
+        elif system == "windows":  # Windows
+            result = subprocess.run(  # noqa: S602
+                ["start", file_path],  # noqa: S607
+                shell=True,
+                check=False,
+                env=env,
+            )
+        else:
+            logger.info("Unsupported operating system")
+            return False
+    except OSError:
+        logger.exception("Could not open %s", file_path)
+        return False
+    return result.returncode == 0
 
 
 def get_unicode_symbol(entry: File | Folder) -> str:

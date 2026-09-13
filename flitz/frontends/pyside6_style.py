@@ -143,6 +143,28 @@ def make_stylesheet(cfg: Config) -> str:
         color: {muted};
         padding: 2px 8px;
     }}
+    QStatusBar QProgressBar {{
+        background: {border};
+        border: none;
+        border-radius: 3px;
+        max-height: 6px;
+        margin-right: 8px;
+    }}
+    QStatusBar QProgressBar::chunk {{
+        background: {selection};
+        border-radius: 3px;
+    }}
+    QStatusBar QToolButton {{
+        background: {bg};
+        color: {text};
+        border: 1px solid {border};
+        border-radius: 5px;
+        padding: 1px 12px;
+        margin: 2px 8px 2px 0;
+    }}
+    QStatusBar QToolButton:hover {{
+        background: {hover};
+    }}
 
     QMenu {{
         background: {bg};

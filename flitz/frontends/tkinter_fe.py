@@ -13,6 +13,7 @@ from flitz.context_menu import ContextMenuItem
 from flitz.file_properties_dialog import FilePropertiesDialog
 from flitz.file_systems import File, Folder
 from flitz.frontends.base import ContextMenuWidget, FeEvent, Frontend
+from flitz.search import Search
 from flitz.utils import get_unicode_symbol, open_file
 
 
@@ -460,24 +461,27 @@ class TkFrontend(Frontend):
             *self.tree.get_children(),
         )  # Clear existing items
 
-        entries = sorted(
-            self.app.fs.list_contents(path, recursive=True),
-            key=lambda x: (isinstance(x, File), x.name),
+        search = Search(
+            self.app.fs,
+            path,
+            search_term,
+            include_hidden=self.cfg.show_hidden_files,
         )
+        for entry in self.app.sort_entries(search):
+            size = entry.file_size if isinstance(entry, File) else ""
+            type_ = "File" if isinstance(entry, File) else "Folder"
+            date_modified = (
+                entry.last_modified_at.strftime("%Y-%m-%d %H:%M:%S")
+                if entry.last_modified_at
+                else ""
+            )
+            unicode_symbol = get_unicode_symbol(entry)
 
-        for entry in entries:
-            if search_term.lower() in entry.name.lower():
-                size = entry.file_size if isinstance(entry, File) else ""
-                type_ = "File" if isinstance(entry, File) else "Folder"
-                date_modified = (
-                    entry.last_modified_at.strftime("%Y-%m-%d %H:%M:%S")
-                    if entry.last_modified_at
-                    else ""
-                )
-                unicode_symbol = get_unicode_symbol(entry)
+            self.tree.insert(
+                "",
+                "end",
+                values=(unicode_symbol, entry.name, size, type_, date_modified),
+            )
 
-                self.tree.insert(
-                    "",
-                    "end",
-                    values=(unicode_symbol, entry.name, size, type_, date_modified),
-                )
+    def stop_search(self) -> None:
+        """Stop a running search; the search of this frontend is synchronous."""

@@ -87,6 +87,10 @@ class FileSystem(ABC):
         """
         return False
 
+    def is_symlink(self, path: str) -> bool:  # noqa: ARG002
+        """Check if a path is a symbolic link. File systems without links: False."""
+        return False
+
     @abstractmethod
     def get_file_or_folder(self, path: str) -> File | Folder:
         """Get a file or folder."""

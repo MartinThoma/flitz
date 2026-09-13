@@ -27,7 +27,8 @@
   modification date.
 - **Keyboard first** — search, rename, create, delete, copy and paste without
   touching the mouse. All shortcuts can be changed.
-- **Recursive search** within the current folder.
+- **Recursive search** in the background: results appear while searching, and
+  you can stop the search at any time.
 - **Customizable** colors, fonts, context menu, and key bindings via a simple
   YAML file.
 - **Remote file systems** such as FTP, next to your local disk.
@@ -66,7 +67,7 @@ flitz --version
 | Go to parent folder       | <kbd>Backspace</kbd>                          |
 | Refresh                   | <kbd>F5</kbd>                                 |
 | Search                    | <kbd>Ctrl</kbd>+<kbd>F</kbd>                  |
-| Leave search              | <kbd>Esc</kbd>                                |
+| Cancel / leave search     | <kbd>Esc</kbd>                                |
 | Rename                    | <kbd>F2</kbd>                                 |
 | Create folder             | <kbd>F7</kbd>                                 |
 | Delete                    | <kbd>Delete</kbd>                             |

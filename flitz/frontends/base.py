@@ -137,4 +137,8 @@ class Frontend(ABC):
 
     @abstractmethod
     def make_search_view(self, path: str, search_term: str) -> None:
-        """Create the search view."""
+        """Show the files/folders below path whose name contains search_term."""
+
+    @abstractmethod
+    def stop_search(self) -> None:
+        """Stop a running search; return once it no longer uses the file system."""
