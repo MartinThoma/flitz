@@ -1,10 +1,8 @@
 """The ShowProperties MixIn."""
 
 from collections.abc import Iterable
-from tkinter import ttk
 from typing import Any
 
-from flitz.file_properties_dialog import FilePropertiesDialog
 from flitz.file_systems import File, FileSystem
 from flitz.frontends.base import Frontend
 
@@ -12,7 +10,6 @@ from flitz.frontends.base import Frontend
 class ShowProperties:
     """Show the properties of one or more file(s)/folder(s)."""
 
-    tree: ttk.Treeview
     current_path: str
     NAME_INDEX: int
     frontend: Frontend
@@ -74,8 +71,7 @@ class ShowProperties:
                     "Error",
                     f"Failed to retrieve properties: {e}",
                 )
-        # Create and display the properties dialog form
-        properties_dialog = FilePropertiesDialog(
+        self.frontend.make_properties_dialog(
             file_name="",
             file_size=size_sum,
             file_type=f"({nb_files} files, {nb_folders} folders)",
@@ -86,6 +82,3 @@ class ShowProperties:
                 else ""
             ),
         )
-        properties_dialog.focus_set()
-        properties_dialog.grab_set()
-        properties_dialog.wait_window()

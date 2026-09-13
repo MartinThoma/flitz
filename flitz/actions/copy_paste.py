@@ -3,7 +3,6 @@
 import logging
 import shutil
 from pathlib import Path
-from tkinter import ttk
 from typing import Any
 
 from flitz.events import current_folder_changed
@@ -15,7 +14,6 @@ logger = logging.getLogger(__name__)
 class CopyPasteMixIn:
     """Allow the user to copy/paste files and folders."""
 
-    tree: ttk.Treeview
     NAME_INDEX: int
     current_path: str
     frontend: Frontend

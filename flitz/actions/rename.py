@@ -1,12 +1,10 @@
 """The Rename MixIn."""
 
-import tkinter as tk
 from pathlib import Path
-from tkinter import ttk
 from typing import Any
 
 from flitz.events import current_folder_changed
-from flitz.frontends.base import Frontend
+from flitz.frontends.base import FeEvent, Frontend
 
 
 class RenameMixIn:
@@ -14,14 +12,13 @@ class RenameMixIn:
 
     NAME_INDEX: int
     COLUMNS: int
-    tree: ttk.Treeview
     current_path: str
     frontend: Frontend
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
-    def rename_item(self, _: tk.Event | None = None) -> None:
+    def rename_item(self, _: FeEvent | None = None) -> None:
         """Trigger a rename action."""
         selected_items = self.frontend.details_pane_get_current_selection()
         if selected_items:

@@ -10,6 +10,7 @@ from PIL import Image, ImageTk
 from flitz import FileExplorer
 from flitz.config import Config
 from flitz.context_menu import ContextMenuItem
+from flitz.file_properties_dialog import FilePropertiesDialog
 from flitz.file_systems import File, Folder
 from flitz.frontends.base import ContextMenuWidget, FeEvent, Frontend
 from flitz.utils import get_unicode_symbol, open_file
@@ -129,6 +130,24 @@ class TkFrontend(Frontend):
     def make_error_message(self, title: str, message: str) -> None:
         """Show an error message."""
         messagebox.showerror(title, message)
+
+    def make_properties_dialog(
+        self,
+        file_name: str,
+        file_size: int,
+        file_type: str,
+        date_modified: str,
+    ) -> None:
+        """Show the properties of the selected file(s) and wait until closed."""
+        properties_dialog = FilePropertiesDialog(
+            file_name=file_name,
+            file_size=file_size,
+            file_type=file_type,
+            date_modified=date_modified,
+        )
+        properties_dialog.focus_set()
+        properties_dialog.grab_set()
+        properties_dialog.wait_window()
 
     def make_context_menu(
         self,

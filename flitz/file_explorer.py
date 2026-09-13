@@ -84,7 +84,7 @@ class FileExplorer(
         )
         self.frontend.bind_keyboard_shortcut(
             self.cfg.keybindings.rename_item,
-            self.rename_item,  # type: ignore[arg-type]
+            self.rename_item,
         )
         self.frontend.bind_keyboard_shortcut(
             self.cfg.keybindings.search,
@@ -101,7 +101,7 @@ class FileExplorer(
         )
         self.frontend.bind_keyboard_shortcut(
             self.cfg.keybindings.delete,
-            self.confirm_delete_item,  # type: ignore[arg-type]
+            self.confirm_delete_item,
         )
         self.frontend.bind_keyboard_shortcut(
             self.cfg.keybindings.create_folder,
@@ -109,11 +109,11 @@ class FileExplorer(
         )
         self.frontend.bind_keyboard_shortcut(
             self.cfg.keybindings.copy_selection,
-            self.copy_selection,  # type: ignore[arg-type]
+            self.copy_selection,
         )
         self.frontend.bind_keyboard_shortcut(
             self.cfg.keybindings.paste,
-            self.paste_selection,  # type: ignore[arg-type]
+            self.paste_selection,
         )
         self.frontend.bind_keyboard_shortcut(
             self.cfg.keybindings.toggle_hidden_file_visibility,

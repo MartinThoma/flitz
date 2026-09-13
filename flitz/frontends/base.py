@@ -90,6 +90,16 @@ class Frontend(ABC):
         """Show an error message."""
 
     @abstractmethod
+    def make_properties_dialog(
+        self,
+        file_name: str,
+        file_size: int,
+        file_type: str,
+        date_modified: str,
+    ) -> None:
+        """Show the properties of the selected file(s) and wait until closed."""
+
+    @abstractmethod
     def make_context_menu(
         self,
         items: list[ContextMenuItem],

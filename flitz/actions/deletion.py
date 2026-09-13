@@ -1,19 +1,16 @@
 """The deletion MixIn."""
 
-import tkinter as tk
 from collections.abc import Callable
 from pathlib import Path
-from tkinter import ttk
 from typing import Any
 
-from flitz.frontends.base import Frontend
+from flitz.frontends.base import FeEvent, Frontend
 
 
 class DeletionMixIn:
     """Handle the deletion of one or more file(s)/folder(s)."""
 
     current_path: str
-    tree: ttk.Treeview
     load_files: Callable[[], None]
     NAME_INDEX: int
     frontend: Frontend
@@ -21,7 +18,7 @@ class DeletionMixIn:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
-    def confirm_delete_item(self, _: tk.Event) -> None:
+    def confirm_delete_item(self, _: FeEvent) -> None:
         """Ask for confirmation before deleting the selected file/folder."""
         selected_items = self.frontend.details_pane_get_current_selection()
         if selected_items:

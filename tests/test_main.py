@@ -1,5 +1,7 @@
 """Core functionality tests."""
 
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -74,3 +76,28 @@ def test_current_selection(file_explorer, folder: Path):
 def test_tk_to_qt_key_sequence(tk_keys: str, qt_keys: str):
     """Tk key bindings of the configuration are translated to Qt."""
     assert tk_to_qt_key_sequence(tk_keys) == qt_keys
+
+
+def test_show_properties(file_explorer, monkeypatch):
+    """The properties of the selection are shown by the frontend."""
+    shown = {}
+    monkeypatch.setattr(
+        file_explorer.frontend,
+        "make_properties_dialog",
+        lambda **kwargs: shown.update(kwargs),
+    )
+    file_explorer.frontend.details_table.selectAll()
+
+    file_explorer.show_properties()
+
+    assert shown["file_type"] == "(2 files, 2 folders)"
+    assert shown["file_size"] == len("xx") + len("x")
+
+
+def test_no_tkinter_needed():
+    """Flitz works on Python installations without tkinter."""
+    code = (
+        "import sys; sys.modules['tkinter'] = None; "
+        "import flitz.cli, flitz.frontends.pyside6_fe"
+    )
+    subprocess.run([sys.executable, "-c", code], check=True)  # noqa: S603

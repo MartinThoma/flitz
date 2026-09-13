@@ -10,6 +10,9 @@ from PySide6.QtGui import QCursor, QFont, QFontDatabase, QIcon, QKeySequence, QS
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
+    QDialog,
+    QDialogButtonBox,
+    QFormLayout,
     QHBoxLayout,
     QHeaderView,
     QInputDialog,
@@ -226,6 +229,26 @@ class PySide6Frontend(Frontend):
     def make_error_message(self, title: str, message: str) -> None:
         """Show an error message."""
         QMessageBox.critical(self.window, title, message)
+
+    def make_properties_dialog(
+        self,
+        file_name: str,
+        file_size: int,
+        file_type: str,
+        date_modified: str,
+    ) -> None:
+        """Show the properties of the selected file(s) and wait until closed."""
+        dialog = QDialog(self.window)
+        dialog.setWindowTitle("Properties")
+        layout = QFormLayout(dialog)
+        layout.addRow("Name:", QLabel(file_name))
+        layout.addRow("Type:", QLabel(file_type))
+        layout.addRow("Size:", QLabel(f"{file_size} bytes"))
+        layout.addRow("Date Modified:", QLabel(date_modified))
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        buttons.rejected.connect(dialog.reject)
+        layout.addRow(buttons)
+        dialog.exec()
 
     def make_context_menu(
         self,
