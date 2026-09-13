@@ -3,7 +3,6 @@
 import importlib.metadata
 import logging
 from pathlib import Path
-from tkinter.simpledialog import askstring
 from typing import TYPE_CHECKING
 
 from .actions import CopyPasteMixIn, DeletionMixIn, RenameMixIn, ShowProperties
@@ -224,7 +223,10 @@ class FileExplorer(
 
     def create_folder(self, _: FeEvent | None = None) -> None:
         """Create a folder."""
-        folder_name = askstring("Create Folder", "Enter folder name:")
+        folder_name = self.frontend.make_textinput_message(
+            "Create Folder",
+            "Enter folder name:",
+        )
         if folder_name:
             new_folder_path = self.fs.get_absolute_path(self.current_path, folder_name)
             try:
@@ -239,7 +241,10 @@ class FileExplorer(
 
     def create_empty_file(self) -> None:
         """Create an empty file."""
-        file_name = askstring("Create Empty File", "Enter file name:")
+        file_name = self.frontend.make_textinput_message(
+            "Create Empty File",
+            "Enter file name:",
+        )
         if file_name:
             new_file_path = self.fs.get_absolute_path(self.current_path, file_name)
             if self.fs.does_path_exist(new_file_path):
@@ -264,7 +269,10 @@ class FileExplorer(
     def handle_search(self, _: FeEvent) -> None:
         """Handle the search functionality."""
         # Open dialog box to input search term
-        search_term = askstring("Search", "Enter search term:")
+        search_term = self.frontend.make_textinput_message(
+            "Search",
+            "Enter search term:",
+        )
         if search_term is not None:
             # Perform search and update Treeview
             self.search_files(search_term)

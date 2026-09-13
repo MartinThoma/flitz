@@ -21,6 +21,7 @@ dynamic = [
 dependencies = [
   "pillow",
   "pydantic",
+  "pyside6",
   "pyyaml",
 ]
 [project.optional-dependencies]

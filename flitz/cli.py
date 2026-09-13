@@ -1,12 +1,11 @@
 """Command-line interactions."""
 
 import sys
-import tkinter as tk
 from pathlib import Path
 
 from flitz import FileExplorer
 from flitz.config import Config
-from flitz.frontends.tkinter_fe import TkFrontend
+from flitz.frontends.pyside6_fe import PySide6Frontend
 
 
 def list_fonts() -> None:
@@ -25,7 +24,7 @@ def entry_point(argv: list[str] = sys.argv) -> None:
     else:
         initial_path = argv[1] if len(argv) > 1 else str(Path().cwd())
         cfg = Config.load()
-        frontend = TkFrontend(tk.Tk(), cfg)
+        frontend = PySide6Frontend(cfg)
         app = FileExplorer(cfg, frontend, initial_path)
         frontend.bind_app(app)
         app.init()
