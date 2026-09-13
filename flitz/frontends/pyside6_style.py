@@ -113,6 +113,15 @@ def make_stylesheet(cfg: Config) -> str:
         background: {selection};
         color: {selection_text};
     }}
+    QTableWidget#details QLineEdit {{
+        background: {bg};
+        color: {text};
+        border: 1px solid {selection};
+        border-radius: 3px;
+        padding: 0 4px;
+        selection-background-color: {selection};
+        selection-color: {selection_text};
+    }}
     QHeaderView::section {{
         background: {bg};
         color: {muted};

@@ -1,5 +1,6 @@
 """Implementation of the frontend using PySide6 (Qt)."""
 
+import contextlib
 import logging
 import os
 import time
@@ -12,6 +13,7 @@ from PySide6.QtCore import (
     QMimeDatabase,
     QModelIndex,
     QObject,
+    QPersistentModelIndex,
     QPoint,
     QSize,
     Qt,
@@ -50,6 +52,7 @@ from PySide6.QtWidgets import (
     QSplitter,
     QStatusBar,
     QStyle,
+    QStyledItemDelegate,
     QTableWidget,
     QTableWidgetItem,
     QToolButton,
@@ -218,6 +221,33 @@ class SearchReceiver(QObject):
             self.frontend.finish_search()
 
 
+class NameEditDelegate(QStyledItemDelegate):
+    """Edit names in place; the extension of files isn't selected initially."""
+
+    def setEditorData(  # noqa: N802
+        self,
+        editor: QWidget,
+        index: QModelIndex | QPersistentModelIndex,
+    ) -> None:
+        """Put the name into the editor and select the part to change."""
+        super().setEditorData(editor, index)
+        if not isinstance(editor, QLineEdit):
+            return
+        name = editor.text()
+        is_folder = index.data(Qt.ItemDataRole.UserRole) == "folder"
+        suffix = Path(name).suffix  # "" for hidden files like ".bashrc"
+        if is_folder or not suffix:
+            return  # the view selects the whole name
+        stem_length = len(name) - len(suffix)
+
+        def select_stem() -> None:
+            with contextlib.suppress(RuntimeError):  # the editor is already closed
+                editor.setSelection(0, stem_length)
+
+        # The view selects the whole text after this method, so select later
+        QTimer.singleShot(0, select_stem)
+
+
 class PySide6Frontend(Frontend):
     """The frontend using PySide6."""
 
@@ -255,6 +285,8 @@ class PySide6Frontend(Frontend):
         self.search_thread: SearchThread | None = None
         self.search_running = False
         self.search_keep_selected: set[str] = set()
+        # (entry, callback) while a name is edited in place
+        self.renaming: tuple[File | Folder, Callable[[str], None]] | None = None
         # Whether the selection was made by flitz, not by the user
         self.selection_is_automatic = False
         self.selecting_rows = False
@@ -621,7 +653,12 @@ class PySide6Frontend(Frontend):
         table.setColumnCount(len(DETAILS_COLUMNS))
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        # Names are only edited when renaming, see edit_name
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.name_delegate = NameEditDelegate(table)
+        table.setItemDelegateForColumn(NAME_COLUMN, self.name_delegate)
+        # After the view's own handler, which commits the text and moves the focus
+        self.name_delegate.closeEditor.connect(self.on_name_editor_closed)
         table.setShowGrid(False)
         table.setAlternatingRowColors(True)
         table.setWordWrap(False)
@@ -771,6 +808,7 @@ class PySide6Frontend(Frontend):
         else:
             keep_selected = set()
         self.details_location = location
+        self.renaming = None
 
         self.details_entries = entries
         table.clearContents()
@@ -806,6 +844,8 @@ class PySide6Frontend(Frontend):
         description, icon = self.get_file_type(entry)
         name_item = QTableWidgetItem(icon, entry.name)
         name_item.setToolTip(str(entry.path))  # e.g. the folder of a search result
+        if isinstance(entry, Folder):
+            name_item.setData(Qt.ItemDataRole.UserRole, "folder")
         table.setItem(row, NAME_COLUMN, name_item)
 
         size = entry.file_size if isinstance(entry, File) else None
@@ -889,6 +929,47 @@ class PySide6Frontend(Frontend):
             else:
                 text = f'Search for "{term}": {text}'
         self.status_label.setText(text)
+
+    def edit_name(self, path: str, rename: Callable[[str], None]) -> None:
+        """Edit the name of the file/folder at path in place."""
+        if self.renaming is not None:
+            return
+        rows = [
+            row
+            for row, entry in enumerate(self.details_entries)
+            if str(entry.path) == str(path)
+        ]
+        if not rows:
+            return
+        item = self.details_table.item(rows[0], NAME_COLUMN)
+        if item is None:
+            return
+        self.renaming = (self.details_entries[rows[0]], rename)
+        self.details_table.scrollToItem(item)
+        self.details_table.editItem(item)
+
+    def on_name_editor_closed(
+        self,
+        editor: QWidget,
+        hint: QStyledItemDelegate.EndEditHint,
+    ) -> None:
+        """Rename unless editing was cancelled (e.g. with Escape)."""
+        if self.renaming is None:
+            return
+        entry, rename = self.renaming
+        self.renaming = None
+        new_name = editor.text() if isinstance(editor, QLineEdit) else entry.name
+
+        # Show the current name until the file is renamed and the view reloaded
+        rows = [row for row, e in enumerate(self.details_entries) if e is entry]
+        item = self.details_table.item(rows[0], NAME_COLUMN) if rows else None
+        if item is not None:
+            item.setText(entry.name)
+
+        cancelled = hint == QStyledItemDelegate.EndEditHint.RevertModelCache
+        if not cancelled and new_name != entry.name:
+            # Renaming reloads the table, so don't do it while the editor closes
+            QTimer.singleShot(0, lambda: rename(new_name))
 
     def details_pane_get_current_selection(self) -> list[str]:
         """Get the current selection in the details pane."""

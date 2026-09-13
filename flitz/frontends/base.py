@@ -136,6 +136,15 @@ class Frontend(ABC):
         """Get the current selection in the details pane."""
 
     @abstractmethod
+    def edit_name(self, path: str, rename: Callable[[str], None]) -> None:
+        """
+        Let the user edit the name of the file/folder at path.
+
+        This might return before the user is done. Unless the user cancels,
+        rename is called with the new name afterwards.
+        """
+
+    @abstractmethod
     def make_search_view(self, path: str, search_term: str) -> None:
         """Show the files/folders below path whose name contains search_term."""
 

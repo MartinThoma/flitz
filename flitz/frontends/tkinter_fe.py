@@ -124,6 +124,17 @@ class TkFrontend(Frontend):
         """Show a message with an input field."""
         return simpledialog.askstring(title, message)
 
+    def edit_name(self, path: str, rename: Callable[[str], None]) -> None:
+        """Ask for the new name of the file/folder at path in a dialog."""
+        old_name = Path(path).name
+        new_name = simpledialog.askstring(
+            "Rename",
+            f"Enter new name for {old_name}:",
+            initialvalue=old_name,
+        )
+        if new_name is not None:
+            rename(new_name)
+
     def make_ok_cancel_message(self, title: str, message: str) -> bool:
         """Show a message with an OK and a Cancel button."""
         return messagebox.askokcancel(title, message)
