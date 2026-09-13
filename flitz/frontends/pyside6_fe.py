@@ -22,6 +22,7 @@ from PySide6.QtGui import (
     QFontMetrics,
     QIcon,
     QKeySequence,
+    QPixmap,
     QShortcut,
 )
 from PySide6.QtWidgets import (
@@ -70,6 +71,7 @@ DETAILS_COLUMNS = [
 ]
 NAME_COLUMN, SIZE_COLUMN, TYPE_COLUMN, MODIFIED_COLUMN = range(len(DETAILS_COLUMNS))
 
+APP_NAME = "flitz"
 SIDEBAR_WIDTH = 210
 
 # Icon themes to use if the platform doesn't set one (e.g. without a desktop)
@@ -147,7 +149,13 @@ class PySide6Frontend(Frontend):
 
     def __init__(self, cfg: Config) -> None:
         self.cfg = cfg
-        self.qapp = cast("QApplication", QApplication.instance() or QApplication([]))
+        self.qapp = cast(
+            "QApplication",
+            QApplication.instance() or QApplication([APP_NAME]),
+        )
+        # Desktops use these to group the windows and to find the app icon
+        self.qapp.setApplicationName(APP_NAME)
+        self.qapp.setDesktopFileName(APP_NAME)
         self.qapp.setStyle("Fusion")  # looks the same on all platforms
         self.set_fallback_icon_theme()
 
@@ -241,8 +249,23 @@ class PySide6Frontend(Frontend):
         self.shortcuts.append(shortcut)
 
     def set_app_icon(self, icon_path: Path) -> None:
-        """Set the application icon."""
-        self.window.setWindowIcon(QIcon(str(icon_path)))
+        """Set the icon of the application, including all of its windows."""
+        pixmap = QPixmap(str(icon_path))
+        icon = QIcon()
+        # Pre-scaled sizes look better in panels and window lists than a
+        # single large image which the desktop scales down
+        for size in (16, 24, 32, 48, 64, 128, 256):
+            icon.addPixmap(
+                pixmap.scaled(
+                    size,
+                    size,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                ),
+            )
+        icon.addPixmap(pixmap)
+        self.qapp.setWindowIcon(icon)
+        self.window.setWindowIcon(icon)
 
     def set_window_size(self, width: int, height: int) -> None:
         """Set the window size."""

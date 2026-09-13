@@ -43,6 +43,12 @@ pipx install flitz
 
 Alternatively, use `uv tool install flitz` or `pip install flitz`.
 
+On Linux, add flitz with its icon to the application menu of your desktop:
+
+```bash
+flitz --install-desktop-entry
+```
+
 ## Usage
 
 ```bash

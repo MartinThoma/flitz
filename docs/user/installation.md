@@ -21,6 +21,19 @@ pip install --user flitz
 ```
 
 
+## Desktop integration (Linux)
+
+pip can't add applications to the menu of your desktop. To add flitz with its
+icon to the application menu, run:
+
+```bash
+flitz --install-desktop-entry
+```
+
+This writes `~/.local/share/applications/flitz.desktop` and the icon to
+`~/.local/share/icons/hicolor/`. Delete those files to remove flitz from the
+menu again.
+
 ## Python Version Support
 
 | Python                 | 3.14 | 3.13 | 3.12 | 3.11 | 3.10 | 3.9 |

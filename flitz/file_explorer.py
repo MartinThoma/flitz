@@ -47,7 +47,7 @@ class FileExplorer(
         self.load_file_systems()
         self.load_context_menu_items()
 
-        icon_path = Path(__file__).resolve().parent / "icon.gif"
+        icon_path = Path(__file__).resolve().parent / "static" / "icon.png"
         self.frontend.set_app_icon(icon_path)
 
         self.current_path = str(Path(initial_path).resolve())
